@@ -92,7 +92,7 @@ function criarFormulario() {
     '• Preencha os dados do professor avaliado.\n' +
     '• Seleccione o tipo de função; o formulário mostrará apenas o quadro de critérios aplicável.\n' +
     '• Em cada critério, atribua a pontuação obtida entre 0 e a pontuação básica máxima indicada ' +
-    '(use ponto ou vírgula para as casas decimais, ex.: 3.20). Atribua 0 quando a actividade não foi realizada.\n' +
+    '(ex.: 3,20). Atribua 0 quando a actividade não foi realizada.\n' +
     '• Em cada padrão pode indicar as evidências (ex.: n.º de turmas, títulos de publicações, links Moodle).\n' +
     '• A pontuação total (máx. 100 pontos) é calculada automaticamente na folha de respostas.'
   );
@@ -152,8 +152,9 @@ function criarFormulario() {
   const ss = SpreadsheetApp.create('Respostas — Avaliação do Desempenho do Professor');
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
   const resumo = ss.insertSheet('Pontuações');
-  resumo.appendRow(['Data/Hora', 'Professor avaliado', 'Quadro aplicado', 'Docência', 'Investigação', 'Gestão académica', 'TOTAL (máx. 100)']);
-  resumo.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#1a5276').setFontColor('#ffffff');
+  resumo.appendRow(['Data/Hora', 'Professor avaliado', 'Quadro aplicado', 'Docência', 'Investigação', 'Gestão académica', 'TOTAL (máx. 100)', 'ID da resposta']);
+  resumo.hideColumns(8);
+  resumo.getRange(1, 1, 1, 8).setFontWeight('bold').setBackground('#1a5276').setFontColor('#ffffff');
   resumo.setFrozenRows(1);
 
   PropertiesService.getScriptProperties().setProperties({
@@ -225,8 +226,21 @@ function aoSubmeter(e) {
 
   const total = tot['Docência'] + tot['Investigação'] + tot['Gestão'];
   const r2 = n => Math.round(n * 100) / 100;
-  SpreadsheetApp.openById(props.getProperty('PLANILHA')).getSheetByName('Pontuações').appendRow([
+  const linha = [
     e.response.getTimestamp(), nome, quadro,
     r2(tot['Docência']), r2(tot['Investigação']), r2(tot['Gestão']), r2(total),
-  ]);
+    e.response.getId(),
+  ];
+
+  // Se a resposta foi editada, actualiza a linha existente em vez de duplicar
+  const folha = SpreadsheetApp.openById(props.getProperty('PLANILHA')).getSheetByName('Pontuações');
+  const idsExistentes = folha.getLastRow() > 1
+    ? folha.getRange(2, 8, folha.getLastRow() - 1, 1).getValues().map(r => r[0])
+    : [];
+  const pos = idsExistentes.indexOf(e.response.getId());
+  if (pos >= 0) {
+    folha.getRange(pos + 2, 1, 1, linha.length).setValues([linha]);
+  } else {
+    folha.appendRow(linha);
+  }
 }
