@@ -1,0 +1,204 @@
+<title>Avaliação do Desempenho Docente</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: ficha institucional — coluna do formulário + painel de pontuação fixo ao lado (empilha no telemóvel) */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#15231f; --muted:#5b6b66; --line:#d9e0dd;
+  --accent:#0f5c4d; --accent-soft:#e1efeb; --ochre:#b8741a; --ochre-soft:#f6ead8; --warn:#b4372b;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-num:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1715; --surface:#17221f; --ink:#e6eeeb; --muted:#9aaba5; --line:#2a3834;
+  --accent:#5fc2a9; --accent-soft:#1d3530; --ochre:#e0a456; --ochre-soft:#3a2c18; --warn:#ef7b6f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1715; --surface:#17221f; --ink:#e6eeeb; --muted:#9aaba5; --line:#2a3834;
+  --accent:#5fc2a9; --accent-soft:#1d3530; --ochre:#e0a456; --ochre-soft:#3a2c18; --warn:#ef7b6f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;align-items:start}
+@media (max-width:860px){.wrap{grid-template-columns:minmax(0,1fr)}}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+.eyebrow{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ochre);font-weight:600}
+header.top{grid-column:1/-1;display:grid;gap:10px;padding-bottom:20px;border-bottom:2px solid var(--ink)}
+header.top h1{font-size:clamp(1.7rem,3.6vw,2.5rem)}
+header.top p{margin:0;color:var(--muted);max-width:68ch}
+.notice{display:flex;gap:10px;align-items:flex-start;background:var(--ochre-soft);border:1px solid color-mix(in srgb,var(--ochre) 35%,transparent);padding:10px 14px;border-radius:8px;font-size:.92rem}
+.notice b{color:var(--ochre)}
+main{display:grid;gap:22px;min-width:0}
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px;display:grid;gap:16px;min-width:0}
+.sec-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.sec-head h2{font-size:1.25rem}
+.tag{font-family:var(--f-num);font-size:.8rem;color:var(--accent);background:var(--accent-soft);padding:3px 9px;border-radius:99px;white-space:nowrap}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+label.f{display:grid;gap:5px;font-weight:600;font-size:.92rem}
+label.f span.req{color:var(--warn)}
+input[type=text],input[type=date],select,textarea,input.score{
+  font:inherit;font-weight:400;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;width:100%}
+textarea{min-height:70px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.choice:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.choices{display:grid;gap:10px}
+.choice{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer;background:var(--bg)}
+.choice input{margin-top:4px;accent-color:var(--accent)}
+.choice.on{border-color:var(--accent);background:var(--accent-soft)}
+.choice small{display:block;color:var(--muted)}
+.crit{display:grid;grid-template-columns:2.2rem minmax(0,1fr) 7.5rem;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.crit:first-of-type{border-top:0}
+.crit .n{font-family:var(--f-num);color:var(--muted);font-size:.85rem}
+.crit .t{min-width:0}
+.crit .t small{display:block;color:var(--muted);font-size:.82rem;font-family:var(--f-num)}
+input.score{font-family:var(--f-num);text-align:right;padding:8px 10px}
+input.score.bad{border-color:var(--warn);color:var(--warn)}
+.err{grid-column:2/-1;color:var(--warn);font-size:.82rem;margin-top:-6px}
+@media (max-width:520px){.crit{grid-template-columns:1.6rem minmax(0,1fr)}.crit input.score{grid-column:2}.err{grid-column:2}}
+.subtotal{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:12px;border-top:2px solid var(--ink);font-weight:600}
+.subtotal .v{font-family:var(--f-num)}
+aside{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;display:grid;gap:16px}
+@media (max-width:860px){aside{position:static;order:-1}}
+.total{display:flex;align-items:baseline;gap:6px}
+.total .big{font-family:var(--f-display);font-size:3rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1}
+.total .of{font-family:var(--f-num);color:var(--muted)}
+.bars{display:grid;gap:12px}
+.bar .lab{display:flex;justify-content:space-between;font-size:.88rem;gap:8px}
+.bar .lab .v{font-family:var(--f-num);font-variant-numeric:tabular-nums;color:var(--muted)}
+.track{height:8px;border-radius:99px;background:var(--accent-soft);overflow:hidden;margin-top:4px}
+.fill{height:100%;background:var(--accent);width:0;transition:width .35s ease}
+.bar.g .fill{background:var(--ochre)}
+.bar.off{opacity:.4}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-weight:600;border-radius:6px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.flow{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.flow ol{margin:6px 0 0;padding-left:1.2rem}
+.flow li.skip{text-decoration:line-through;opacity:.6}
+#msg{font-size:.9rem;color:var(--accent);font-weight:600}
+footer{grid-column:1/-1;color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Apêndice 3 · Pré-visualização do formulário Google</div>
+    <h1>Avaliação do Desempenho do Professor a Tempo Inteiro</h1>
+    <p>Esta página mostra as perguntas, a ramificação entre o Quadro 1 e o Quadro 2 e o cálculo da pontuação final do formulário que o script cria no Google Forms.</p>
+    <div class="notice"><b>Exemplo</b><span>Os campos vêm preenchidos com dados fictícios para demonstração. Nada do que escrever aqui é enviado ou guardado; as respostas reais são recolhidas no Google Forms.</span></div>
+  </header>
+
+  <main>
+    <form id="frm" novalidate>
+      <div style="display:grid;gap:22px">
+        <section class="card">
+          <div class="sec-head"><h2>Dados do professor avaliado</h2><span class="tag">Secção 1</span></div>
+          <div class="fields">
+            <label class="f">Nome <span class="req">*</span><input type="text" id="nome" value="Ana Macuácua (exemplo)"></label>
+            <label class="f">Unidade Básica/Extensão <span class="req">*</span><input type="text" id="unidade" value="Faculdade de Gestão de Turismo e Informática — Pemba"></label>
+            <label class="f">Departamento <span class="req">*</span><input type="text" id="dep" value="Departamento de Gestão"></label>
+            <label class="f">Categoria Profissional <span class="req">*</span>
+              <select id="cat"><option>Professor Catedrático</option><option>Professor Associado</option><option selected>Professor Auxiliar</option><option>Assistente</option><option>Assistente Estagiário</option><option>Outra…</option></select></label>
+            <label class="f">Período de Avaliação <span class="req">*</span><input type="text" id="periodo" value="Janeiro a Dezembro de 2026"></label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="sec-head"><h2>Tipo de função do professor</h2><span class="tag">Secção 2 · define o quadro</span></div>
+          <div class="choices" role="radiogroup">
+            <label class="choice" id="c1"><input type="radio" name="tipo" value="Q1" id="tipoQ1"><span><b>Com Função de Coordenação Científica e Pedagógica</b><small>Coordenador de Departamento, Curso e/ou Programa · Quadro 1 · Docência 50 + Investigação 40 + Gestão 10</small></span></label>
+            <label class="choice" id="c2"><input type="radio" name="tipo" value="Q2" id="tipoQ2" checked><span><b>Sem Função de Gestão</b><small>Quadro 2 · Docência 60 + Investigação 40</small></span></label>
+          </div>
+        </section>
+
+        <div id="quadro" style="display:grid;gap:22px"></div>
+
+        <section class="card">
+          <div class="sec-head"><h2>Apreciação final e identificação do avaliador</h2><span class="tag">Secção final</span></div>
+          <label class="f">Pontos fortes do desempenho<textarea id="fortes">Boa presença na plataforma Moodle e orientação regular de monografias.</textarea></label>
+          <label class="f">Aspectos a melhorar / recomendações<textarea id="melhorar">Submeter pelo menos um artigo a revista indexada no próximo período.</textarea></label>
+          <div class="fields">
+            <label class="f">Nome do Avaliador <span class="req">*</span><input type="text" id="aval" value="(exemplo) Director da Unidade"></label>
+            <label class="f">Cargo/Função do Avaliador <span class="req">*</span><input type="text" id="cargo" value="Director Adjunto Pedagógico"></label>
+            <label class="f">Data da avaliação <span class="req">*</span><input type="date" id="data" value="2026-11-13"></label>
+          </div>
+          <label class="choice"><input type="checkbox" id="decl" checked><span>Declaro que a pontuação atribuída se baseia em evidências verificáveis do período de avaliação.</span></label>
+          <div class="btns"><button class="primary" type="submit" id="enviar">Simular envio</button></div>
+          <div id="msg" role="status"></div>
+        </section>
+      </div>
+    </form>
+  </main>
+
+  <aside aria-label="Pontuação">
+    <div class="eyebrow">Pontuação calculada</div>
+    <div class="total"><span class="big" id="tot">0,00</span><span class="of">/ 100</span></div>
+    <div class="bars" id="bars"></div>
+    <div class="btns">
+      <button type="button" id="bExemplo">Preencher exemplo</button>
+      <button type="button" id="bLimpar">Limpar notas</button>
+    </div>
+    <div class="flow"><b>Percurso no formulário</b><ol id="flow"></ol></div>
+  </aside>
+
+  <footer>Critérios e pontuações básicas conforme o Apêndice 3 (Quadro 1 e Quadro 2). Na folha de respostas Google, o separador «Pontuações» faz esta mesma soma automaticamente.</footer>
+</div>
+
+<script>
+const INV=[["Comunicações orais/poster em encontros científicos nacionais/internacionais",2],["Coordenação técnico-científica de projectos de investigação",5.45],["Editor/Corpo editorial de publicação periódica no âmbito nacional/internacional",3.3],["Participação na organização de eventos científicos",4],["Orientação/co-orientação científica de trabalhos finais de curso (monografias/dissertações/teses)",9.3],["Participação em júris de defesas públicas de trabalhos científicos",4.1],["Publicação de artigos em actas de encontros científicos/revistas científicas nacionais/internacionais com arbitragem (revisão de pares, «revista indexada»)",3.7],["Publicação de capítulo de livro com avaliação científica e com/sem revisão de pares",3.15],["Publicação de livros em Editoras Nacionais/Internacionais (com/sem avaliação científica e com revisão de pares)",5]];
+const Q={
+ Q1:{nome:"Quadro 1 — Com Função de Coordenação Científica e Pedagógica",padroes:[
+  {k:"D",nome:"Docência",max:50,c:[["Acompanhamento e tutoria na Plataforma Moodle",3.2],["Participação na concepção/revisão de planos curriculares (1.º, 2.º, 3.º ciclos)",4.3],["Facilitação de aulas teóricas, teórico-práticas, práticas laboratoriais e seminários (1.º, 2.º, 3.º ciclos)",16.4],["Orientação/Co-orientação tutorial e acompanhamento de trabalhos finais de programas (1.º, 2.º, 3.º ciclos)",12],["Participação em júris de defesas públicas de trabalhos científicos (1.º, 2.º, 3.º ciclos)",2],["Participação na produção de materiais didáctico-pedagógicos e publicados na Plataforma Moodle da UCM",9.65],["Participação na formação profissional e aperfeiçoamento pedagógico no campo da psicopedagogia",2.45]]},
+  {k:"I",nome:"Investigação",max:40,c:INV},
+  {k:"G",nome:"Gestão académica",max:10,c:[["Coordenação científica e pedagógica de curso, programa ou Centro de Investigação e Regência de Unidades Curriculares (1.º, 2.º, 3.º ciclos)",6.5],["Gestão/Extensão universitária",2.5],["Consultoria ou prestação de serviços especializados",1]]}]},
+ Q2:{nome:"Quadro 2 — Sem Função de Gestão",padroes:[
+  {k:"D",nome:"Docência",max:60,c:[["Acompanhamento e tutoria na Plataforma Moodle",7.2],["Participação na concepção/revisão de planos curriculares (1.º, 2.º, 3.º ciclos)",5.3],["Facilitação de aulas teóricas, teórico-práticas, práticas laboratoriais e seminários (1.º, 2.º, 3.º ciclos)",20.4],["Orientação/Co-orientação tutorial e acompanhamento de trabalhos finais de programas (1.º, 2.º, 3.º ciclos)",12.95],["Participação em júris de defesas públicas de trabalhos científicos (1.º, 2.º, 3.º ciclos)",3.5],["Produção de materiais didáctico-pedagógicos e publicados na Plataforma Moodle da UCM",7.65],["Formação profissional e aperfeiçoamento pedagógico no campo da psicopedagogia",3]]},
+  {k:"I",nome:"Investigação",max:40,c:INV}]}
+};
+// Notas de exemplo (fracção do máximo), apenas para demonstração
+const EX=[1,.8,.95,.7,1,.6,1,.5,0,0,.75,.6,.8,.5,0,.5,1,.4,.0];
+const fmt=n=>n.toFixed(2).replace(".",",");
+const parse=s=>{const v=parseFloat(String(s).trim().replace(",","."));return isNaN(v)?null:v};
+const $=id=>document.getElementById(id);
+let atual="Q2";
+
+function render(){
+  const q=Q[atual];let html="",idx=0;
+  q.padroes.forEach((p,pi)=>{
+    html+=`<section class="card"><div class="sec-head"><h2>${p.nome}</h2><span class="tag">${q.nome.split(" — ")[0]} · máx. ${p.max} pts</span></div><div>`;
+    p.c.forEach(([t,m],i)=>{const id=`s_${atual}_${pi}_${i}`;
+      html+=`<div class="crit"><span class="n">${i+1}.</span><label class="t" for="${id}">${t}<small>máx. ${fmt(m)} pts</small></label><input class="score" inputmode="decimal" id="${id}" data-p="${p.k}" data-max="${m}" value="${fmt(m*(EX[idx]??0))}" aria-label="Pontuação obtida"></div>`;idx++;});
+    html+=`</div><label class="f">Evidências / observações — ${p.nome}<textarea id="ev_${atual}_${p.k}" placeholder="Ex.: disciplinas leccionadas, n.º de orientandos, títulos e links de publicações"></textarea></label><div class="subtotal"><span>Subtotal ${p.nome}</span><span class="v" id="sub_${p.k}">0,00 / ${fmt(p.max)}</span></div></section>`;
+  });
+  $("quadro").innerHTML=html;
+  $("c1").classList.toggle("on",atual==="Q1");$("c2").classList.toggle("on",atual==="Q2");
+  const fl=atual==="Q1"?["Dados do professor","Tipo de função","Q1 · Docência","Q1 · Investigação","Q1 · Gestão académica","Apreciação final"]:["Dados do professor","Tipo de função","Q2 · Docência","Q2 · Investigação","Apreciação final"];
+  $("flow").innerHTML=fl.map(x=>`<li>${x}</li>`).join("");
+  calc();
+}
+function calc(){
+  const tot={D:0,I:0,G:0};
+  document.querySelectorAll("input.score").forEach(inp=>{
+    const v=parse(inp.value),m=+inp.dataset.max;const ok=inp.value.trim()===""||(v!==null&&v>=0&&v<=m+1e-9);
+    inp.classList.toggle("bad",!ok);
+    let e=inp.parentElement.querySelector(".err");
+    if(!ok){if(!e){e=document.createElement("div");e.className="err";inp.parentElement.appendChild(e)}e.textContent=`Introduza um número entre 0 e ${fmt(m)}.`}else if(e)e.remove();
+    if(ok&&v!==null)tot[inp.dataset.p]+=v;
+  });
+  const q=Q[atual];let sum=0;
+  $("bars").innerHTML=["D","I","G"].map(k=>{const p=q.padroes.find(x=>x.k===k);const nm={D:"Docência",I:"Investigação",G:"Gestão académica"}[k];
+    if(!p)return `<div class="bar g off"><div class="lab"><span>${nm}</span><span class="v">não se aplica</span></div><div class="track"><div class="fill"></div></div></div>`;
+    sum+=tot[k];const s=$("sub_"+k);if(s)s.textContent=`${fmt(tot[k])} / ${fmt(p.max)}`;
+    return `<div class="bar ${k==="G"?"g":""}"><div class="lab"><span>${nm}</span><span class="v">${fmt(tot[k])} / ${fmt(p.max)}</span></div><div class="track"><div class="fill" style="width:${Math.min(100,tot[k]/p.max*100)}%"></div></div></div>`}).join("");
+  $("tot").textContent=fmt(Math.round(sum*100)/100);
+}
+document.querySelectorAll('input[name=tipo]').forEach(r=>r.addEventListener("change",e=>{atual=e.target.value;render()}));
+$("quadro").addEventListener("input",e=>{if(e.target.classList.contains("score"))calc()});
+$("bLimpar").addEventListener("click",()=>{document.querySelectorAll("input.score").forEach(i=>i.value="");calc()});
+$("bExemplo").addEventListener("click",render);
+$("frm").addEventListener("submit",e=>{e.preventDefault();
+  const bad=document.querySelectorAll("input.score.bad").length, vazio=[...document.querySelectorAll("input.score")].filter(i=>i.value.trim()==="").length;
+  $("msg").style.color=bad||vazio||!$("decl").checked?"var(--warn)":"var(--accent)";
+  $("msg").textContent=bad?`Há ${bad} nota(s) fora do intervalo permitido.`:vazio?`Faltam ${vazio} nota(s). No Google Forms todas são obrigatórias (use 0 quando a actividade não foi realizada).`:!$("decl").checked?"Marque a declaração para continuar.":`Simulação concluída: ${$("nome").value} — ${$("tot").textContent} pontos. No formulário real, esta linha seria gravada em «Pontuações».`;
+});
+render();
+</script>
