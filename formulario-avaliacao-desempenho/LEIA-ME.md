@@ -25,6 +25,7 @@ Este formulário é gerado automaticamente pelo script `CriarFormulario.gs`, com
 
 - Cada critério pede uma **pontuação entre 0 e a pontuação básica máxima** do modelo. Por exemplo, "Facilitação de aulas…" aceita 0 a 16,40 no Quadro 1. O Google Forms rejeita valores fora deste intervalo.
 - Cada padrão tem um campo opcional de **evidências**, como turmas leccionadas, orientandos ou links de publicações.
+- Na **Investigação** há ainda um campo **Link para anexo de evidências**. O avaliado coloca os comprovativos (certificados, artigos, actas, declarações) numa pasta do Google Drive, partilha-a com "Qualquer pessoa com o link" e cola o link. O formulário só aceita links válidos (https://). O Google Forms não permite criar perguntas de carregamento de ficheiros por script; por isso usa-se o link.
 
 ## Cálculo automático
 

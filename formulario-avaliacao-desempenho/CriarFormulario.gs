@@ -198,6 +198,17 @@ function adicionarQuadro_(form, quadro, mapa) {
     form.addParagraphTextItem()
       .setTitle('Evidências / observações — ' + p.nome)
       .setHelpText('Opcional. Ex.: disciplinas leccionadas, n.º de orientandos, títulos e links de publicações.');
+
+    if (p.nome === 'Investigação') {
+      form.addTextItem()
+        .setTitle('Link para anexo de evidências — Investigação')
+        .setHelpText('Coloque os comprovativos (certificados, artigos, capas de livros, actas, declarações de orientação/júri) ' +
+                     'numa pasta do Google Drive ou OneDrive, partilhe-a com "Qualquer pessoa com o link" e cole aqui o link.')
+        .setValidation(FormApp.createTextValidation()
+          .requireTextIsUrl()
+          .setHelpText('Introduza um link válido, começado por https://')
+          .build());
+    }
   });
   return { primeira, ultima };
 }

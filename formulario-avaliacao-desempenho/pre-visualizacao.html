@@ -36,7 +36,7 @@ section.card{background:var(--surface);border:1px solid var(--line);border-radiu
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
 label.f{display:grid;gap:5px;font-weight:600;font-size:.92rem}
 label.f span.req{color:var(--warn)}
-input[type=text],input[type=date],select,textarea,input.score{
+input[type=text],input[type=url],input[type=date],select,textarea,input.score{
   font:inherit;font-weight:400;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;width:100%}
 textarea{min-height:70px;resize:vertical}
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.choice:focus-within{outline:2px solid var(--accent);outline-offset:2px}
@@ -167,7 +167,7 @@ function render(){
     html+=`<section class="card"><div class="sec-head"><h2>${p.nome}</h2><span class="tag">${q.nome.split(" — ")[0]} · máx. ${p.max} pts</span></div><div>`;
     p.c.forEach(([t,m],i)=>{const id=`s_${atual}_${pi}_${i}`;
       html+=`<div class="crit"><span class="n">${i+1}.</span><label class="t" for="${id}">${t}<small>máx. ${fmt(m)} pts</small></label><input class="score" inputmode="decimal" id="${id}" data-p="${p.k}" data-max="${m}" value="${fmt(m*(EX[idx]??0))}" aria-label="Pontuação obtida"></div>`;idx++;});
-    html+=`</div><label class="f">Evidências / observações — ${p.nome}<textarea id="ev_${atual}_${p.k}" placeholder="Ex.: disciplinas leccionadas, n.º de orientandos, títulos e links de publicações"></textarea></label><div class="subtotal"><span>Subtotal ${p.nome}</span><span class="v" id="sub_${p.k}">0,00 / ${fmt(p.max)}</span></div></section>`;
+    html+=`</div><label class="f">Evidências / observações — ${p.nome}<textarea id="ev_${atual}_${p.k}" placeholder="Ex.: disciplinas leccionadas, n.º de orientandos, títulos e links de publicações"></textarea></label>${p.k==="I"?`<label class="f">Link para anexo de evidências — Investigação<input type="url" id="lnk_${atual}" placeholder="https://drive.google.com/drive/folders/…" value="https://drive.google.com/drive/folders/exemplo-evidencias"><small style="font-weight:400;color:var(--muted)">Comprovativos (certificados, artigos, capas de livros, actas, declarações de orientação/júri) numa pasta partilhada com «Qualquer pessoa com o link».</small></label>`:""}<div class="subtotal"><span>Subtotal ${p.nome}</span><span class="v" id="sub_${p.k}">0,00 / ${fmt(p.max)}</span></div></section>`;
   });
   $("quadro").innerHTML=html;
   $("c1").classList.toggle("on",atual==="Q1");$("c2").classList.toggle("on",atual==="Q2");
