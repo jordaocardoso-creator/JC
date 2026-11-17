@@ -43,6 +43,8 @@ const IDS = {
   REGISTO: '1oQ2Lubm5nFFl8Y5J-1C-xMkUb9g_z_Xvh6aQcPS_8nU', // Registo — Avaliação de Desempenho Docente
 };
 
+const VERSAO = '2026-11-17-c';   // tem de ser igual à versão em Pagina.html
+
 const ESTADOS = {
   SUBMISSAO: 'Em submissão',
   AVALIADOR: 'Aguarda validação do avaliador',
@@ -175,7 +177,7 @@ function doGet(e) {
     ctx = { modo: 'erro', mensagem: err.message };
   }
   ctx.sistema = { titulo: SISTEMA.TITULO, instituicao: SISTEMA.INSTITUICAO, maxMb: SISTEMA.TAMANHO_MAX_MB,
-                  tipos: SISTEMA.TIPOS_PERMITIDOS, estados: ESTADOS, cursos: SISTEMA.CURSOS, programas: SISTEMA.PROGRAMAS };
+                  tipos: SISTEMA.TIPOS_PERMITIDOS, estados: ESTADOS, cursos: SISTEMA.CURSOS, programas: SISTEMA.PROGRAMAS, versao: VERSAO };
   const t = HtmlService.createTemplateFromFile('Pagina');
   t.ctx = JSON.stringify(ctx).replace(/</g, '\\u003c');
   return t.evaluate()

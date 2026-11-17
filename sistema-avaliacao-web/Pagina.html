@@ -80,11 +80,26 @@ ol.hist{margin:0;padding-left:1.2rem;display:grid;gap:4px}
 </style>
 </head>
 <body>
-<div class="wrap" id="app"></div>
+<div class="wrap" id="app"><p id="carregar" style="color:#5b6b66">A carregar o sistema de avaliação…</p></div>
+
+<script>
+// Mostra no ecrã qualquer erro de JavaScript (em vez de uma página em branco).
+window.addEventListener('error', function (ev) {
+  var box = document.getElementById('erro-tecnico');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'erro-tecnico';
+    box.style.cssText = 'max-width:1000px;margin:16px auto;padding:14px 16px;border-radius:8px;background:#fbe9e7;color:#b4372b;font:15px/1.5 system-ui,sans-serif;white-space:pre-wrap';
+    document.body.insertBefore(box, document.body.firstChild);
+  }
+  box.textContent = 'Erro técnico (envie esta mensagem ao administrador):\n' + (ev.message || ev.error) + '\nLinha: ' + (ev.lineno || '?') + ' · Versão da página: 2026-11-17-c';
+});
+</script>
 
 <script>
 const CTX = <?!= ctx ?>;
 const S = CTX.sistema;
+const VERSAO_PAGINA = '2026-11-17-c';
+S.cursos = S.cursos || []; S.programas = S.programas || [];
 const app = document.getElementById('app');
 const fmt = n => Number(n || 0).toFixed(2).replace('.', ',');
 const num = s => { const v = parseFloat(String(s ?? '').trim().replace(',', '.')); return isNaN(v) ? null : v; };
@@ -471,6 +486,10 @@ function paginaVer() {
 }
 
 /* ---------- Arranque ---------- */
+if (S.versao !== VERSAO_PAGINA) {
+  document.body.insertAdjacentHTML('afterbegin', '<div class="wrap"><div class="msg err">Os ficheiros Code.gs (versão ' + esc(S.versao || 'antiga') +
+    ') e Pagina (versão ' + VERSAO_PAGINA + ') não são da mesma versão. Copie de novo os dois ficheiros, guarde e publique uma nova versão em Implementar → Gerir implementações.</div></div>');
+}
 ({ docente: paginaDocente, avaliador: paginaAvaliador, direccao: paginaDireccao, ver: paginaVer }[CTX.modo] ||
   (() => app.innerHTML = cabecalho(-1, '') + `<section class="card"><div class="msg err">${esc(CTX.mensagem || 'Página não encontrada.')}</div></section>`))();
 </script>
