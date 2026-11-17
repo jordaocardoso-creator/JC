@@ -13,7 +13,7 @@ Este sistema substitui o formulário Google anterior. Funciona como uma página 
 
 Em cada etapa o docente recebe um email e pode acompanhar o estado do processo por um link próprio.
 
-## Instalação (cerca de 10 minutos, feita uma única vez, num computador)
+## Instalação (cerca de 5 minutos, feita uma única vez, num computador)
 
 ### Passo 1: criar o projecto
 
@@ -23,27 +23,17 @@ Em cada etapa o docente recebe um email e pode acompanhar o estado do processo p
 4. À esquerda, clique em **+** ao lado de "Ficheiros" e escolha **HTML**. Dê ao ficheiro o nome **`Pagina`**, exactamente assim, sem ".html". Apague o conteúdo que aparece e cole **todo** o conteúdo de **`Pagina.html`**.
 5. Clique em **Guardar**.
 
-### Passo 2: instalar
+### Passo 2: verificar os avaliadores e a Direcção
 
-1. Na barra superior, escolha a função **`instalar`** e clique em **Executar**.
-2. Autorize o acesso quando o Google pedir. Se aparecer "A Google não validou esta app", clique em **Avançadas → Aceder ao projecto (não seguro)**. O script é seu e só trabalha na sua conta.
-3. O **Registo de execução** mostra o link da folha **"Registo — Avaliação de Desempenho Docente"**. A folha e a pasta **"Avaliação de Desempenho Docente — Sistema"** ficam no seu Drive.
+A pasta **"Avaliação de Desempenho Docente — Sistema"** e a folha **"Registo — Avaliação de Desempenho Docente"** já foram criadas no seu Drive, e o código já as conhece. **Não precisa de executar a função `instalar`.**
 
-### Passo 3: indicar os avaliadores e a Direcção
-
-Abra a folha do Registo e vá ao separador **Configuração**. Escreva uma linha por pessoa:
-
-| Papel | Nome | Email |
-|---|---|---|
-| Avaliador | Dr. Carlos Mussa | carlos.mussa@ucm.ac.mz |
-| Avaliador | Dra. Rosa Nhantumbo | rosa.nhantumbo@ucm.ac.mz |
-| Direcção | Director Adjunto Pedagógico | direccao@ucm.ac.mz |
+Abra a folha do Registo e vá ao separador **Configuração**. Para teste, já lá estão três exemplos com o seu email: dois avaliadores e a Direcção. Assim recebe os emails de todas as etapas e pode experimentar o circuito completo. Antes de enviar o link aos docentes, substitua-os pelos nomes e emails reais, uma linha por pessoa.
 
 - Os **avaliadores** aparecem na lista do formulário do docente.
 - Todas as pessoas com o papel **Direcção** recebem os processos validados.
 - Use emails de contas Google (Gmail ou institucional Google). Assim, as pastas de evidências são partilhadas só com essas pessoas.
 
-### Passo 4: publicar a página web
+### Passo 3: publicar a página web
 
 1. No editor, clique em **Implementar → Nova implementação**.
 2. Na roda dentada, escolha **Aplicação Web**.
@@ -51,7 +41,7 @@ Abra a folha do Registo e vá ao separador **Configuração**. Escreva uma linha
    - **Descrição:** Avaliação docente 2026
    - **Executar como:** **Eu** (o seu email)
    - **Quem tem acesso:** **Qualquer pessoa**
-4. Clique em **Implementar** e autorize, se pedir.
+4. Clique em **Implementar**. O Google pede autorização: clique em **Autorizar acesso**, escolha a sua conta e, se aparecer "A Google não validou esta app", clique em **Avançadas → Aceder ao projecto (não seguro)** e depois em **Permitir**.
 5. Copie o **URL da aplicação Web**, que termina em `/exec`. **Este é o link que envia a todos os docentes.**
 
 ## Onde fica cada coisa

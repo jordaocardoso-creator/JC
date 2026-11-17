@@ -235,6 +235,7 @@ async function submeterDocente(pad) {
   const val = id => $('#' + id).value.trim();
   const dados = { nome: val('nome'), email: val('email'), unidade: val('unidade'), departamento: val('departamento'),
     categoria: val('categoria'), periodo: val('periodo'), avaliador: val('avaliador'),
+    avaliadorNome: $('#avaliador').selectedOptions[0] ? $('#avaliador').selectedOptions[0].textContent : '',
     quadro: ($('input[name=quadro]:checked') || {}).value, itens: {} };
   const faltam = ['nome', 'email', 'unidade', 'departamento', 'categoria', 'periodo', 'avaliador'].filter(k => !dados[k]);
   faltam.forEach(k => $('#' + k).classList.add('bad'));

@@ -22,6 +22,14 @@ const SISTEMA = {
   TIPOS_PERMITIDOS: ['application/pdf', 'image/jpeg', 'image/png'],
 };
 
+// Pastas e folha já criadas no Google Drive do proprietário (dispensa a função "instalar").
+// Para instalar noutra conta, deixe os três valores vazios ('') e execute "instalar".
+const IDS = {
+  RAIZ: '14L3o0K-nYPxG1WBC_B373cW110MCTj3j',        // Avaliação de Desempenho Docente — Sistema
+  PROCESSOS: '1n09za5eRjcLhsF5cSCdvqUhXTjbeepMe',   // Processos por docente
+  REGISTO: '1oQ2Lubm5nFFl8Y5J-1C-xMkUb9g_z_Xvh6aQcPS_8nU', // Registo — Avaliação de Desempenho Docente
+};
+
 const ESTADOS = {
   SUBMISSAO: 'Em submissão',
   AVALIADOR: 'Aguarda validação do avaliador',
@@ -103,8 +111,8 @@ function listaCriterios_(q) {
 // ---------------------------------------------------------------------------
 function instalar() {
   const props = PropertiesService.getScriptProperties();
-  if (props.getProperty('REGISTO')) {
-    Logger.log('O sistema já está instalado. Registo: ' + SpreadsheetApp.openById(props.getProperty('REGISTO')).getUrl());
+  if (props.getProperty('REGISTO') || IDS.REGISTO) {
+    Logger.log('O sistema já está instalado. Registo: ' + SpreadsheetApp.openById(prop_('REGISTO')).getUrl());
     return;
   }
   const raiz = DriveApp.createFolder('Avaliação de Desempenho Docente — Sistema');
@@ -229,7 +237,8 @@ function docIniciar(d) {
   if (erros.length) throw new Error('Preencha todos os campos obrigatórios dos dados do docente.');
   if (!QUADROS[d.quadro]) throw new Error('Quadro inválido.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) throw new Error('Email do docente inválido.');
-  const avaliador = config_().avaliadores.find(a => a.email.toLowerCase() === String(d.avaliador).toLowerCase());
+  const lista = config_().avaliadores.filter(a => a.email.toLowerCase() === String(d.avaliador).toLowerCase());
+  const avaliador = lista.find(a => a.nome === d.avaliadorNome) || lista[0];
   if (!avaliador) throw new Error('Seleccione um avaliador da lista.');
 
   const itens = {};
@@ -608,7 +617,7 @@ function comBloqueio_(fn) {
 }
 
 function prop_(k) {
-  const v = PropertiesService.getScriptProperties().getProperty(k);
+  const v = PropertiesService.getScriptProperties().getProperty(k) || IDS[k];
   if (!v) throw new Error('O sistema ainda não foi instalado. Execute a função "instalar" no editor.');
   return v;
 }
