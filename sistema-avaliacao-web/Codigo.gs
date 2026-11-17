@@ -43,7 +43,7 @@ const IDS = {
   REGISTO: '1oQ2Lubm5nFFl8Y5J-1C-xMkUb9g_z_Xvh6aQcPS_8nU', // Registo — Avaliação de Desempenho Docente
 };
 
-const VERSAO = '2026-11-17-c';   // tem de ser igual à versão em Pagina.html
+const VERSAO = '2026-11-17-d';   // tem de ser igual à versão em Pagina.html
 
 const ESTADOS = {
   SUBMISSAO: 'Em submissão',
@@ -179,7 +179,8 @@ function doGet(e) {
   ctx.sistema = { titulo: SISTEMA.TITULO, instituicao: SISTEMA.INSTITUICAO, maxMb: SISTEMA.TAMANHO_MAX_MB,
                   tipos: SISTEMA.TIPOS_PERMITIDOS, estados: ESTADOS, cursos: SISTEMA.CURSOS, programas: SISTEMA.PROGRAMAS, versao: VERSAO };
   const t = HtmlService.createTemplateFromFile('Pagina');
-  t.ctx = JSON.stringify(ctx).replace(/</g, '\\u003c');
+  // Enviado em base64 (só letras, números, + / =) para não ser alterado pelo serviço HTML da Google.
+  t.ctx = Utilities.base64Encode(JSON.stringify(ctx), Utilities.Charset.UTF_8);
   return t.evaluate()
     .setTitle(SISTEMA.TITULO)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');

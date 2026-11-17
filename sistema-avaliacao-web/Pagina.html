@@ -85,29 +85,38 @@ ol.hist{margin:0;padding-left:1.2rem;display:grid;gap:4px}
 <script>
 // Mostra no ecrã qualquer erro de JavaScript (em vez de uma página em branco).
 window.addEventListener('error', function (ev) {
+  var NL = String.fromCharCode(10);
   var box = document.getElementById('erro-tecnico');
   if (!box) {
     box = document.createElement('div'); box.id = 'erro-tecnico';
-    box.style.cssText = 'max-width:1000px;margin:16px auto;padding:14px 16px;border-radius:8px;background:#fbe9e7;color:#b4372b;font:15px/1.5 system-ui,sans-serif;white-space:pre-wrap';
+    box.style.cssText = 'max-width:1000px;margin:16px auto;padding:14px 16px;border-radius:8px;background:#fbe9e7;color:#b4372b;font:14px/1.5 system-ui,sans-serif;white-space:pre-wrap;word-break:break-all';
     document.body.insertBefore(box, document.body.firstChild);
   }
-  box.textContent = 'Erro técnico (envie esta mensagem ao administrador):\n' + (ev.message || ev.error) + '\nLinha: ' + (ev.lineno || '?') + ' · Versão da página: 2026-11-17-c';
+  var n = ev.lineno || 0, extra = '';
+  var scripts = document.getElementsByTagName('script');
+  for (var i = 0; i < scripts.length; i++) {
+    var linhas = (scripts[i].text || '').split(NL);
+    if (n > 0 && n <= linhas.length) extra += NL + 'Script ' + (i + 1) + ', linha ' + n + ': ' + linhas[n - 1].slice(0, 200);
+  }
+  box.textContent = 'Erro técnico (envie esta mensagem ao administrador):' + NL + (ev.message || ev.error) +
+    NL + 'Linha: ' + (n || '?') + ', coluna: ' + (ev.colno || '?') + ' · Versão da página: 2026-11-17-d' + extra;
 });
 </script>
 
 <script>
 (function () {
 'use strict';
-const CTX = <?!= ctx ?>;
+const CTX = JSON.parse(new TextDecoder('utf-8').decode(Uint8Array.from(atob('<?!= ctx ?>'), ch => ch.charCodeAt(0))));
 const S = CTX.sistema;
-const VERSAO_PAGINA = '2026-11-17-c';
+const VERSAO_PAGINA = '2026-11-17-d';
 S.cursos = S.cursos || []; S.programas = S.programas || [];
 const app = document.getElementById('app');
 const fmt = n => Number(n || 0).toFixed(2).replace('.', ',');
 const num = s => { const v = parseFloat(String(s ?? '').trim().replace(',', '.')); return isNaN(v) ? null : v; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const $ = (sel, el = document) => el.querySelector(sel);
-const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
+const q1 = (sel, el = document) => el.querySelector(sel);
+const qTodos = (sel, el = document) => [...el.querySelectorAll(sel)];
+const linkValido = u => (u.indexOf('https://') === 0 || u.indexOf('http://') === 0) && u.length > 10 && u.indexOf(' ') < 0;
 const call = (fn, ...args) => new Promise((res, rej) =>
   google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e && e.message ? e : new Error(String(e))))[fn](...args));
 
@@ -150,8 +159,8 @@ function blocoAssinatura(id, rotulo, nomeInicial = '', comCargo = false, declara
   </div>`;
 }
 function ligarAssinatura(id) {
-  const pad = padAssinatura($('#' + id + '-canvas'));
-  $('#' + id + '-limpar').onclick = pad.limpar;
+  const pad = padAssinatura(q1('#' + id + '-canvas'));
+  q1('#' + id + '-limpar').onclick = pad.limpar;
   return pad;
 }
 
@@ -202,17 +211,17 @@ function paginaDocente() {
   </section>`;
 
   let pad = null;
-  $$('input[name=quadro]').forEach(r => r.onchange = () => {
-    $$('.choice[data-q]').forEach(c => c.classList.toggle('on', c.dataset.q === r.value));
+  qTodos('input[name=quadro]').forEach(r => r.onchange = () => {
+    qTodos('.choice[data-q]').forEach(c => c.classList.toggle('on', c.dataset.q === r.value));
     desenharQuadro(Q[r.value]);
-    $('#final').hidden = false;
+    q1('#final').hidden = false;
     if (!pad) pad = ligarAssinatura('sd');
   });
-  $('#submeter').onclick = () => submeterDocente(pad);
+  q1('#submeter').onclick = () => submeterDocente(pad);
 }
 
 function desenharQuadro(q) {
-  $('#quadro').innerHTML = q.padroes.map(p => `
+  q1('#quadro').innerHTML = q.padroes.map(p => `
     <section class="card" style="margin-top:20px">
       <div class="head"><h2>${esc(p.nome)}</h2><span class="tag">Passo 3 · máx. ${p.max} pontos</span></div>
       <div class="msg info">Em cada critério, indique a pontuação que considera ter obtido (0 se não realizou a actividade) e junte as evidências: descrição, link electrónico (Moodle, revista, repositório, Drive) e/ou ficheiros PDF, JPG ou PNG até ${S.maxMb} MB cada.</div>
@@ -235,8 +244,8 @@ function desenharQuadro(q) {
         </div>`).join('')}
       <div class="subtotal"><span>Subtotal ${esc(p.nome)}</span><span data-sub="${p.k}">0,00 / ${fmt(p.max)}</span></div>
     </section>`).join('');
-  $$('.auto').forEach(i => i.oninput = totaisDocente);
-  $$('.anexos').forEach(i => i.onchange = () => {
+  qTodos('.auto').forEach(i => i.oninput = totaisDocente);
+  qTodos('.anexos').forEach(i => i.onchange = () => {
     const box = i.closest('.crit').querySelector('.files');
     box.innerHTML = [...i.files].map(f => {
       const okTipo = S.tipos.includes(f.type), okTam = f.size <= S.maxMb * 1048576;
@@ -248,44 +257,44 @@ function desenharQuadro(q) {
 
 function totaisDocente() {
   const sub = {}; let tot = 0;
-  $$('.crit').forEach(c => {
-    const i = $('.auto', c), v = num(i.value), max = +c.dataset.max;
+  qTodos('.crit').forEach(c => {
+    const i = q1('.auto', c), v = num(i.value), max = +c.dataset.max;
     const ok = i.value.trim() === '' || (v !== null && v >= 0 && v <= max + 1e-9);
     i.classList.toggle('bad', !ok);
     if (ok && v !== null) { sub[c.dataset.p] = (sub[c.dataset.p] || 0) + v; tot += v; }
   });
-  $$('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + s.textContent.split('/ ')[1]);
-  $('#tot').textContent = fmt(tot);
+  qTodos('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + s.textContent.split('/ ')[1]);
+  q1('#tot').textContent = fmt(tot);
 }
 
 async function submeterDocente(pad) {
-  const st = $('#estado'), btn = $('#submeter');
-  const val = id => $('#' + id).value.trim();
+  const st = q1('#estado'), btn = q1('#submeter');
+  const val = id => q1('#' + id).value.trim();
   const dados = { nome: val('nome'), email: val('email'), unidade: val('unidade'),
-    cursos: $$('input[name=curso]:checked').map(i => i.value), programas: $$('input[name=programa]:checked').map(i => i.value),
+    cursos: qTodos('input[name=curso]:checked').map(i => i.value), programas: qTodos('input[name=programa]:checked').map(i => i.value),
     categoria: val('categoria'), periodo: val('periodo'), avaliador: val('avaliador'),
-    avaliadorNome: $('#avaliador').selectedOptions[0] ? $('#avaliador').selectedOptions[0].textContent : '',
-    quadro: ($('input[name=quadro]:checked') || {}).value, itens: {} };
+    avaliadorNome: q1('#avaliador').selectedOptions[0] ? q1('#avaliador').selectedOptions[0].textContent : '',
+    quadro: (q1('input[name=quadro]:checked') || {}).value, itens: {} };
   const faltam = ['nome', 'email', 'unidade', 'categoria', 'periodo', 'avaliador'].filter(k => !dados[k]);
-  faltam.forEach(k => $('#' + k).classList.add('bad'));
+  faltam.forEach(k => q1('#' + k).classList.add('bad'));
   if (faltam.length) return msg(st, 'err', 'Preencha todos os dados do docente (campos assinalados).');
   const semCurso = !dados.cursos.length && !dados.programas.length;
-  $$('fieldset.opcoes').forEach(f => f.classList.toggle('bad', semCurso));
+  qTodos('fieldset.opcoes').forEach(f => f.classList.toggle('bad', semCurso));
   if (semCurso) return msg(st, 'err', 'Seleccione pelo menos um curso ou um programa em que lecciona.');
   const ficheiros = []; let erro = '';
-  $$('.crit').forEach(c => {
-    const v = num($('.auto', c).value), max = +c.dataset.max, link = $('.link', c).value.trim();
-    if (v === null || v < 0 || v > max + 1e-9) { $('.auto', c).classList.add('bad'); erro = erro || 'Indique a auto-avaliação em todos os critérios (0 a ' + fmt(max) + '). Use 0 quando não realizou a actividade.'; }
-    if (link && !/^https?:\/\/\S+$/i.test(link)) { $('.link', c).classList.add('bad'); erro = erro || 'Há um link inválido. Use um endereço começado por https://'; }
-    [...$('.anexos', c).files].forEach(f => {
+  qTodos('.crit').forEach(c => {
+    const v = num(q1('.auto', c).value), max = +c.dataset.max, link = q1('.link', c).value.trim();
+    if (v === null || v < 0 || v > max + 1e-9) { q1('.auto', c).classList.add('bad'); erro = erro || 'Indique a auto-avaliação em todos os critérios (0 a ' + fmt(max) + '). Use 0 quando não realizou a actividade.'; }
+    if (link && !linkValido(link)) { q1('.link', c).classList.add('bad'); erro = erro || 'Há um link inválido. Use um endereço começado por https://'; }
+    [...q1('.anexos', c).files].forEach(f => {
       if (!S.tipos.includes(f.type)) erro = erro || `"${f.name}" não é PDF, JPG ou PNG.`;
       if (f.size > S.maxMb * 1048576) erro = erro || `"${f.name}" excede ${S.maxMb} MB.`;
       ficheiros.push({ key: c.dataset.key, f });
     });
-    dados.itens[c.dataset.key] = { auto: v, desc: $('.desc', c).value, link };
+    dados.itens[c.dataset.key] = { auto: v, desc: q1('.desc', c).value, link };
   });
   if (erro) return msg(st, 'err', erro);
-  if (!$('#sd-nome').value.trim() || pad.vazio() || !$('#sd-decl').checked)
+  if (!q1('#sd-nome').value.trim() || pad.vazio() || !q1('#sd-decl').checked)
     return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
 
   btn.disabled = true;
@@ -298,7 +307,7 @@ async function submeterDocente(pad) {
       await call('docCarregar', id, up, key, f.name, f.type, await lerBase64(f));
     }
     msg(st, 'info', 'A assinar e a enviar ao avaliador…');
-    const r = await call('docFinalizar', id, up, { nome: $('#sd-nome').value, declaracao: true, png: pad.png() });
+    const r = await call('docFinalizar', id, up, { nome: q1('#sd-nome').value, declaracao: true, png: pad.png() });
     app.innerHTML = cabecalho(1, '') + `<section class="card"><h2>Submetido com sucesso</h2>
       <div class="msg ok">O processo n.º ${esc(r.id)} foi enviado ao avaliador. Recebeu uma confirmação por email.</div>
       <p>Pode acompanhar o estado do processo neste link (também enviado por email):<br><a href="${esc(r.acompanhar)}">${esc(r.acompanhar)}</a></p></section>`;
@@ -373,8 +382,8 @@ function paginaAvaliador() {
       <div id="estado" role="status"></div>
     </section>`;
   const pad = ligarAssinatura('sa');
-  $$('.crit').forEach(c => {
-    const sel = $('.estado', c), p = $('.pont', c);
+  qTodos('.crit').forEach(c => {
+    const sel = q1('.estado', c), p = q1('.pont', c);
     sel.onchange = () => {
       if (sel.value === 'Validada') p.value = fmt(c.dataset.auto);
       if (sel.value === 'Não validada') p.value = '0,00';
@@ -384,32 +393,32 @@ function paginaAvaliador() {
     p.oninput = totaisAvaliador;
   });
   totaisAvaliador();
-  $('#submeter').onclick = async () => {
-    const st = $('#estado'), btn = $('#submeter'), itens = {}; let erro = '';
-    $$('.crit').forEach(c => {
-      const e = $('.estado', c).value, v = num($('.pont', c).value), max = +c.dataset.max;
-      if (!e) { $('.estado', c).classList.add('bad'); erro = erro || 'Indique a validação de todas as evidências.'; }
-      if (v === null || v < 0 || v > max + 1e-9) { $('.pont', c).classList.add('bad'); erro = erro || 'Há pontuações validadas em falta ou fora do intervalo.'; }
-      itens[c.dataset.key] = { estado: e, pont: v, coment: $('.coment', c).value };
+  q1('#submeter').onclick = async () => {
+    const st = q1('#estado'), btn = q1('#submeter'), itens = {}; let erro = '';
+    qTodos('.crit').forEach(c => {
+      const e = q1('.estado', c).value, v = num(q1('.pont', c).value), max = +c.dataset.max;
+      if (!e) { q1('.estado', c).classList.add('bad'); erro = erro || 'Indique a validação de todas as evidências.'; }
+      if (v === null || v < 0 || v > max + 1e-9) { q1('.pont', c).classList.add('bad'); erro = erro || 'Há pontuações validadas em falta ou fora do intervalo.'; }
+      itens[c.dataset.key] = { estado: e, pont: v, coment: q1('.coment', c).value };
     });
     if (erro) return msg(st, 'err', erro);
-    if (!$('#sa-nome').value.trim() || pad.vazio() || !$('#sa-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
+    if (!q1('#sa-nome').value.trim() || pad.vazio() || !q1('#sa-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
     btn.disabled = true; msg(st, 'info', 'A guardar a validação e a enviar à Direcção…');
     try {
-      await call('avaSubmeter', r.id, CTX.t, { itens, parecer: $('#parecer').value,
-        nome: $('#sa-nome').value, cargo: $('#sa-cargo').value, declaracao: true, png: pad.png() });
+      await call('avaSubmeter', r.id, CTX.t, { itens, parecer: q1('#parecer').value,
+        nome: q1('#sa-nome').value, cargo: q1('#sa-cargo').value, declaracao: true, png: pad.png() });
       app.innerHTML = cabecalho(2, '') + `<section class="card"><div class="msg ok">Validação assinada e submetida à Direcção. Obrigado.</div></section>`;
     } catch (e) { msg(st, 'err', 'Não foi possível submeter: ' + esc(e.message)); btn.disabled = false; }
   };
 }
 function totaisAvaliador() {
   const sub = {}; let tot = 0;
-  $$('.crit').forEach(c => { const v = num($('.pont', c).value), max = +c.dataset.max;
-    const ok = $('.pont', c).value.trim() === '' || (v !== null && v >= 0 && v <= max + 1e-9);
-    $('.pont', c).classList.toggle('bad', !ok);
+  qTodos('.crit').forEach(c => { const v = num(q1('.pont', c).value), max = +c.dataset.max;
+    const ok = q1('.pont', c).value.trim() === '' || (v !== null && v >= 0 && v <= max + 1e-9);
+    q1('.pont', c).classList.toggle('bad', !ok);
     if (ok && v !== null) { sub[c.dataset.p] = (sub[c.dataset.p] || 0) + v; tot += v; } });
-  $$('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + fmt(s.dataset.max));
-  $('#tot').textContent = fmt(tot);
+  qTodos('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + fmt(s.dataset.max));
+  q1('#tot').textContent = fmt(tot);
 }
 
 /* ============================================================
@@ -454,20 +463,20 @@ function paginaDireccao() {
       <div id="estado" role="status"></div>
     </section>`;
   const pad = ligarAssinatura('sdir');
-  $$('input[name=dec]').forEach(i => i.onchange = () => {
+  qTodos('input[name=dec]').forEach(i => i.onchange = () => {
     const alt = i.value === 'Homologada com alteração da pontuação';
-    $('#pfinal').readOnly = !alt; if (!alt) $('#pfinal').value = fmt(r.totalValidado);
-    $$('.choice').forEach(c => c.classList.toggle('on', $('input', c) && $('input', c).checked));
+    q1('#pfinal').readOnly = !alt; if (!alt) q1('#pfinal').value = fmt(r.totalValidado);
+    qTodos('.choice').forEach(c => c.classList.toggle('on', q1('input', c) && q1('input', c).checked));
   });
-  $$('.choice').forEach(c => c.classList.toggle('on', !!($('input[name=dec]', c) || {}).checked));
-  $('#submeter').onclick = async () => {
-    const st = $('#estado'), btn = $('#submeter'), dec = $('input[name=dec]:checked').value;
-    if (dec !== 'Homologada' && !$('#despacho').value.trim()) return msg(st, 'err', 'Escreva o despacho com a justificação.');
-    if (!$('#sdir-nome').value.trim() || pad.vazio() || !$('#sdir-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
+  qTodos('.choice').forEach(c => c.classList.toggle('on', !!(q1('input[name=dec]', c) || {}).checked));
+  q1('#submeter').onclick = async () => {
+    const st = q1('#estado'), btn = q1('#submeter'), dec = q1('input[name=dec]:checked').value;
+    if (dec !== 'Homologada' && !q1('#despacho').value.trim()) return msg(st, 'err', 'Escreva o despacho com a justificação.');
+    if (!q1('#sdir-nome').value.trim() || pad.vazio() || !q1('#sdir-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
     btn.disabled = true; msg(st, 'info', dec === 'Devolvida ao avaliador' ? 'A devolver ao avaliador…' : 'A registar a decisão e a gerar o documento final em PDF…');
     try {
-      const res = await call('dirSubmeter', r.id, CTX.t, { decisao: dec, pontFinal: $('#pfinal').value,
-        despacho: $('#despacho').value, nome: $('#sdir-nome').value, cargo: $('#sdir-cargo').value, declaracao: true, png: pad.png() });
+      const res = await call('dirSubmeter', r.id, CTX.t, { decisao: dec, pontFinal: q1('#pfinal').value,
+        despacho: q1('#despacho').value, nome: q1('#sdir-nome').value, cargo: q1('#sdir-cargo').value, declaracao: true, png: pad.png() });
       app.innerHTML = cabecalho(res.devolvido ? 1 : 3, '') + `<section class="card">${res.devolvido
         ? '<div class="msg ok">Processo devolvido ao avaliador. Ele recebeu um email com o despacho.</div>'
         : `<div class="msg ok">Decisão registada. O documento final foi gerado e enviado ao docente e ao avaliador.</div><p><a href="${esc(res.pdf)}">Abrir o documento final (PDF)</a></p>`}</section>`;
