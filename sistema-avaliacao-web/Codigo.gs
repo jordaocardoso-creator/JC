@@ -1,16 +1,14 @@
-/**
- * ============================================================================
- *  SISTEMA DE AVALIAÇÃO DO DESEMPENHO DO PROFESSOR A TEMPO INTEIRO
- *  Circuito: DOCENTE (auto-avaliação + evidências) → AVALIADOR (validação +
- *  assinatura) → DIRECÇÃO (decisão final) → DOCUMENTO ÚNICO EM PDF por docente.
- *  Baseado no Apêndice 3 (Quadro 1 e Quadro 2).
- *
- *  Ficheiros do projecto Apps Script:
- *    • Codigo.gs   (este ficheiro)
- *    • Pagina.html (interface web)
- *  Instalação: ver LEIA-ME.
- * ============================================================================
- */
+
+// ============================================================================
+// SISTEMA DE AVALIAÇÃO DO DESEMPENHO DO PROFESSOR A TEMPO INTEIRO
+// Circuito: DOCENTE (auto-avaliação + evidências) → AVALIADOR (validação +
+// assinatura) → DIRECÇÃO (decisão final) → DOCUMENTO ÚNICO EM PDF por docente.
+// Baseado no Apêndice 3 (Quadro 1 e Quadro 2).
+// Ficheiros do projecto Apps Script:
+// • Codigo.gs   (este ficheiro)
+// • Pagina.html (interface web)
+// Instalação: ver LEIA-ME.
+// ============================================================================
 
 // ---------------------------------------------------------------------------
 // 1. CONFIGURAÇÃO GERAL (pode alterar)
