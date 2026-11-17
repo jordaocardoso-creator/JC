@@ -27,7 +27,7 @@ Aplicação web no Google Apps Script, instalada numa conta institucional **@ucm
 | Programa | Mestrado em Psicologia em Saúde | Roda Nhavoto | rnhavoto@ucm.ac.mz |
 | Programa | Mestrado em Saúde Pública | Brigite Zongo | szongo@ucm.ac.mz |
 | Ano Propedêutico | Ano Propedêutico | Nilton Maumane | njmaumane@ucm.ac.mz |
-| Direcção | — | **a indicar** | direccao@ucm.ac.mz (substituir) |
+| Direcção | — | Direcção da Faculdade de Ciências de Saúde | direccao.fcs@ucm.ac.mz |
 
 Estes dados ficam no separador **Configuração** da folha do Registo e podem ser alterados lá, sem mexer no código. Enquanto um curso não tiver email de coordenador, o docente não consegue submeter com esse curso marcado.
 
@@ -40,8 +40,7 @@ Estes dados ficam no separador **Configuração** da folha do Registo e podem se
    - clique em **+ → HTML**, dê o nome `Pagina`, apague o conteúdo e cole com o **2.º botão**;
    - clique em **Guardar**.
 4. **Instalar.** Na barra superior escolha a função **`instalar`** e clique em **Executar**. Autorize o acesso. O **Registo de execução** mostra o link da folha **"Registo — Avaliação de Desempenho Docente"**.
-5. **Confirmar a Configuração.** Abra a folha do Registo e, no separador **Configuração**, confirme os coordenadores:
-   - na linha **Direcção**, escreva o nome e o email de quem decide. Pode haver mais do que uma linha "Direcção".
+5. **Confirmar a Configuração.** Abra a folha do Registo e, no separador **Configuração**, confirme os coordenadores e a Direcção (já estão todos preenchidos). Pode acrescentar mais linhas "Direcção" se mais alguém tiver de receber os processos para decisão.
 6. **Publicar.** Clique em **Implementar → Nova implementação**, escolha **Aplicação Web** e preencha:
    - **Executar como:** Eu
    - **Quem tem acesso:** **Qualquer pessoa na Universidade Católica de Moçambique**, ou o nome do domínio ucm.ac.mz
