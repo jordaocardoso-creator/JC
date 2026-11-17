@@ -96,6 +96,8 @@ window.addEventListener('error', function (ev) {
 </script>
 
 <script>
+(function () {
+'use strict';
 const CTX = <?!= ctx ?>;
 const S = CTX.sistema;
 const VERSAO_PAGINA = '2026-11-17-c';
@@ -492,6 +494,7 @@ if (S.versao !== VERSAO_PAGINA) {
 }
 ({ docente: paginaDocente, avaliador: paginaAvaliador, direccao: paginaDireccao, ver: paginaVer }[CTX.modo] ||
   (() => app.innerHTML = cabecalho(-1, '') + `<section class="card"><div class="msg err">${esc(CTX.mensagem || 'Página não encontrada.')}</div></section>`))();
+})();
 </script>
 </body>
 </html>
