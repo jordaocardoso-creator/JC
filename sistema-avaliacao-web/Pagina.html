@@ -99,16 +99,16 @@ window.addEventListener('error', function (ev) {
     if (n > 0 && n <= linhas.length) extra += NL + 'Script ' + (i + 1) + ', linha ' + n + ': ' + linhas[n - 1].slice(0, 200);
   }
   box.textContent = 'Erro técnico (envie esta mensagem ao administrador):' + NL + (ev.message || ev.error) +
-    NL + 'Linha: ' + (n || '?') + ', coluna: ' + (ev.colno || '?') + ' · Versão da página: 2026-11-17-d' + extra;
+    NL + 'Linha: ' + (n || '?') + ', coluna: ' + (ev.colno || '?') + ' · Versão da página: 2026-11-17-e' + extra;
 });
 </script>
 
 <script>
 (function () {
 'use strict';
-const CTX = JSON.parse(new TextDecoder('utf-8').decode(Uint8Array.from(atob('<?!= ctx ?>'), ch => ch.charCodeAt(0))));
+const CTX = JSON.parse(new TextDecoder('utf-8').decode(Uint8Array.from(atob('<?!= ctx ?>'.split('-').join('+').split('_').join('/')), ch => ch.charCodeAt(0))));
 const S = CTX.sistema;
-const VERSAO_PAGINA = '2026-11-17-d';
+const VERSAO_PAGINA = '2026-11-17-e';
 S.cursos = S.cursos || []; S.programas = S.programas || [];
 const app = document.getElementById('app');
 const fmt = n => Number(n || 0).toFixed(2).replace('.', ',');
@@ -116,7 +116,9 @@ const num = s => { const v = parseFloat(String(s ?? '').trim().replace(',', '.')
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const q1 = (sel, el = document) => el.querySelector(sel);
 const qTodos = (sel, el = document) => [...el.querySelectorAll(sel)];
-const linkValido = u => (u.indexOf('https://') === 0 || u.indexOf('http://') === 0) && u.length > 10 && u.indexOf(' ') < 0;
+// Nota: nunca escrever duas barras seguidas no código desta página (o serviço da Google corta a linha).
+const BARRAS = '/' + '/';
+const linkValido = u => (u.indexOf('https:' + BARRAS) === 0 || u.indexOf('http:' + BARRAS) === 0) && u.length > 10 && u.indexOf(' ') < 0;
 const call = (fn, ...args) => new Promise((res, rej) =>
   google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e && e.message ? e : new Error(String(e))))[fn](...args));
 
@@ -235,7 +237,7 @@ function desenharQuadro(q) {
             <div class="grid">
               <label class="f">Descrição da evidência <span class="hint">(opcional)</span><textarea class="desc" placeholder="Ex.: 3 turmas de Gestão Financeira, 1.º semestre"></textarea></label>
               <div style="display:grid;gap:10px">
-                <label class="f">Link da evidência electrónica <span class="hint">(opcional)</span><input type="url" class="link" placeholder="https://"></label>
+                <label class="f">Link da evidência electrónica <span class="hint">(opcional)</span><input type="url" class="link" placeholder="https:${BARRAS}"></label>
                 <label class="f">Anexar documentos (PDF/JPG/PNG) <span class="hint">(opcional, vários)</span><input type="file" class="anexos" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></label>
                 <div class="files"></div>
               </div>
@@ -285,7 +287,7 @@ async function submeterDocente(pad) {
   qTodos('.crit').forEach(c => {
     const v = num(q1('.auto', c).value), max = +c.dataset.max, link = q1('.link', c).value.trim();
     if (v === null || v < 0 || v > max + 1e-9) { q1('.auto', c).classList.add('bad'); erro = erro || 'Indique a auto-avaliação em todos os critérios (0 a ' + fmt(max) + '). Use 0 quando não realizou a actividade.'; }
-    if (link && !linkValido(link)) { q1('.link', c).classList.add('bad'); erro = erro || 'Há um link inválido. Use um endereço começado por https://'; }
+    if (link && !linkValido(link)) { q1('.link', c).classList.add('bad'); erro = erro || 'Há um link inválido. Use um endereço começado por https:' + BARRAS; }
     [...q1('.anexos', c).files].forEach(f => {
       if (!S.tipos.includes(f.type)) erro = erro || `"${f.name}" não é PDF, JPG ou PNG.`;
       if (f.size > S.maxMb * 1048576) erro = erro || `"${f.name}" excede ${S.maxMb} MB.`;
