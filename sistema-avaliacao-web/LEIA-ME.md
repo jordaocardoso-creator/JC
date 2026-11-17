@@ -53,6 +53,7 @@ Abra a folha do Registo e vá ao separador **Configuração**. Para teste, já l
 
 - **O docente precisa de conta Google?** Não. Basta o link e um email válido.
 - **Posso alterar o código depois?** Sim. Depois de guardar a alteração, vá a **Implementar → Gerir implementações → ✏️ (Editar) → Versão: Nova versão → Implementar**. O link mantém-se.
+- **Quero alterar a lista de cursos ou programas.** Edite as listas `CURSOS` e `PROGRAMAS` no início de `Codigo.gs` e publique uma nova versão (ver a pergunta anterior). O docente pode marcar vários cursos e vários programas ao mesmo tempo.
 - **Quero mudar o tamanho máximo dos ficheiros.** Altere `TAMANHO_MAX_MB` no início de `Codigo.gs`.
 - **Um link deixou de funcionar.** Quando a Direcção devolve um processo, o avaliador recebe um link novo. O link antigo deixa de ser válido por segurança.
 - **Limite de emails:** uma conta Gmail gratuita envia até cerca de 100 emails por dia. Cada processo completo usa 6 a 8 emails.

@@ -70,6 +70,11 @@ th{background:var(--accent-soft)} td.n,th.n{text-align:right;font-variant-numeri
 .scroll{overflow-x:auto}
 .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.8rem;font-weight:600}
 .pill.v{background:var(--accent-soft);color:var(--accent)} .pill.p{background:var(--ochre-soft);color:var(--ochre)} .pill.x{background:var(--warn-soft);color:var(--warn)}
+fieldset.opcoes{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:0;display:grid;gap:6px;align-content:start;min-width:0;background:var(--bg)}
+fieldset.opcoes.bad{border-color:var(--warn);background:var(--warn-soft)}
+fieldset.opcoes legend{font-weight:600;font-size:.92rem;padding:0 4px}
+label.opc{display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:.95rem}
+label.opc input{margin-top:4px;accent-color:var(--accent)}
 ol.hist{margin:0;padding-left:1.2rem;display:grid;gap:4px}
 @media (max-width:560px){.crit-top{grid-template-columns:1fr}}
 </style>
@@ -147,15 +152,21 @@ function paginaDocente() {
     <div class="head"><h2>Dados do docente</h2><span class="tag">Passo 1</span></div>
     <div class="grid">
       <label class="f">Nome completo <span class="req">*</span><input type="text" id="nome"></label>
-      <label class="f">Email <span class="req">*</span><input type="email" id="email" placeholder="para receber o documento final"></label>
+      <label class="f">Email <span class="req">*</span><input type="email" id="email" placeholder="nome@exemplo.com"></label>
       <label class="f">Unidade Básica/Extensão <span class="req">*</span><input type="text" id="unidade"></label>
-      <label class="f">Departamento <span class="req">*</span><input type="text" id="departamento"></label>
       <label class="f">Categoria Profissional <span class="req">*</span>
         <select id="categoria"><option value="">Seleccione…</option><option>Professor Catedrático</option><option>Professor Associado</option><option>Professor Auxiliar</option><option>Assistente</option><option>Assistente Estagiário</option><option>Outra</option></select></label>
       <label class="f">Período de Avaliação <span class="req">*</span><input type="text" id="periodo" placeholder="Ex.: Janeiro a Dezembro de 2026"></label>
       <label class="f">Avaliador <span class="req">*</span>
         <select id="avaliador"><option value="">Seleccione…</option>${CTX.avaliadores.map(a => `<option value="${esc(a.email)}">${esc(a.nome)}</option>`).join('')}</select></label>
     </div>
+    <div class="grid" id="cursos-programas">
+      <fieldset class="opcoes" id="cursos"><legend>Cursos <span class="hint">(pode marcar vários)</span></legend>
+        ${S.cursos.map((c, i) => `<label class="opc"><input type="checkbox" name="curso" value="${esc(c)}" id="curso-${i}"> ${esc(c)}</label>`).join('')}</fieldset>
+      <fieldset class="opcoes" id="programas"><legend>Programas <span class="hint">(pode marcar vários)</span></legend>
+        ${S.programas.map((c, i) => `<label class="opc"><input type="checkbox" name="programa" value="${esc(c)}" id="programa-${i}"> ${esc(c)}</label>`).join('')}</fieldset>
+    </div>
+    <p class="hint" style="margin:0"><span class="req">*</span> Seleccione pelo menos um curso ou um programa em que lecciona. Pode marcar cursos e programas ao mesmo tempo.</p>
   </section>
   <section class="card">
     <div class="head"><h2>Função que exerce</h2><span class="tag">Passo 2 · define o quadro a preencher</span></div>
@@ -233,13 +244,17 @@ function totaisDocente() {
 async function submeterDocente(pad) {
   const st = $('#estado'), btn = $('#submeter');
   const val = id => $('#' + id).value.trim();
-  const dados = { nome: val('nome'), email: val('email'), unidade: val('unidade'), departamento: val('departamento'),
+  const dados = { nome: val('nome'), email: val('email'), unidade: val('unidade'),
+    cursos: $$('input[name=curso]:checked').map(i => i.value), programas: $$('input[name=programa]:checked').map(i => i.value),
     categoria: val('categoria'), periodo: val('periodo'), avaliador: val('avaliador'),
     avaliadorNome: $('#avaliador').selectedOptions[0] ? $('#avaliador').selectedOptions[0].textContent : '',
     quadro: ($('input[name=quadro]:checked') || {}).value, itens: {} };
-  const faltam = ['nome', 'email', 'unidade', 'departamento', 'categoria', 'periodo', 'avaliador'].filter(k => !dados[k]);
+  const faltam = ['nome', 'email', 'unidade', 'categoria', 'periodo', 'avaliador'].filter(k => !dados[k]);
   faltam.forEach(k => $('#' + k).classList.add('bad'));
   if (faltam.length) return msg(st, 'err', 'Preencha todos os dados do docente (campos assinalados).');
+  const semCurso = !dados.cursos.length && !dados.programas.length;
+  $$('fieldset.opcoes').forEach(f => f.classList.toggle('bad', semCurso));
+  if (semCurso) return msg(st, 'err', 'Seleccione pelo menos um curso ou um programa em que lecciona.');
   const ficheiros = []; let erro = '';
   $$('.crit').forEach(c => {
     const v = num($('.auto', c).value), max = +c.dataset.max, link = $('.link', c).value.trim();
@@ -283,7 +298,7 @@ function dadosDocente(r) {
   const d = r.docente;
   return `<section class="card"><div class="head"><h2>${esc(d.nome)}</h2><span class="tag">Processo ${esc(r.id)}</span></div>
     <div class="grid" style="font-size:.95rem">
-      <div><span class="hint">Unidade</span><br>${esc(d.unidade)}</div><div><span class="hint">Departamento</span><br>${esc(d.departamento)}</div>
+      <div><span class="hint">Unidade</span><br>${esc(d.unidade)}</div><div><span class="hint">Cursos</span><br>${esc((d.cursos || []).join('; ') || '—')}</div><div><span class="hint">Programas</span><br>${esc((d.programas || []).join('; ') || '—')}</div>
       <div><span class="hint">Categoria</span><br>${esc(d.categoria)}</div><div><span class="hint">Período</span><br>${esc(d.periodo)}</div>
       <div><span class="hint">Função / Quadro</span><br>${esc(CTX.quadros[r.quadro].nome)}</div><div><span class="hint">Avaliador</span><br>${esc(r.avaliador.nome)}</div>
     </div>

@@ -20,6 +20,21 @@ const SISTEMA = {
   INSTITUICAO: 'Universidade Católica de Moçambique',
   TAMANHO_MAX_MB: 10,                     // tamanho máximo por ficheiro anexado
   TIPOS_PERMITIDOS: ['application/pdf', 'image/jpeg', 'image/png'],
+  // Opções que o docente pode seleccionar (pode marcar vários cursos e/ou vários programas)
+  CURSOS: [
+    'Administração e Gestão Hospitalar',
+    'Análises Clínicas e Laboratoriais',
+    'Farmácia',
+    'Enfermagem',
+    'Medicina Geral',
+    'Psicologia Clínica',
+    'Assistência Social',
+  ],
+  PROGRAMAS: [
+    'Mestrado em Gestão de Serviços de Saúde',
+    'Mestrado em Psicologia',
+    'Mestrado em Saúde Pública',
+  ],
 };
 
 // Pastas e folha já criadas no Google Drive do proprietário (dispensa a função "instalar").
@@ -37,7 +52,7 @@ const ESTADOS = {
   CONCLUIDA: 'Concluída',
 };
 
-const COLUNAS = ['ID', 'Submetido em', 'Docente', 'Email do docente', 'Unidade', 'Departamento', 'Quadro',
+const COLUNAS = ['ID', 'Submetido em', 'Docente', 'Email do docente', 'Unidade', 'Cursos e programas', 'Quadro',
   'Avaliador', 'Estado', 'Auto-avaliação', 'Pontuação validada', 'Pontuação final', 'Decisão',
   'Pasta de evidências', 'Documento final', 'Dados (não editar)'];
 
@@ -162,7 +177,7 @@ function doGet(e) {
     ctx = { modo: 'erro', mensagem: err.message };
   }
   ctx.sistema = { titulo: SISTEMA.TITULO, instituicao: SISTEMA.INSTITUICAO, maxMb: SISTEMA.TAMANHO_MAX_MB,
-                  tipos: SISTEMA.TIPOS_PERMITIDOS, estados: ESTADOS };
+                  tipos: SISTEMA.TIPOS_PERMITIDOS, estados: ESTADOS, cursos: SISTEMA.CURSOS, programas: SISTEMA.PROGRAMAS };
   const t = HtmlService.createTemplateFromFile('Pagina');
   t.ctx = JSON.stringify(ctx).replace(/</g, '\\u003c');
   return t.evaluate()
@@ -231,11 +246,14 @@ function imagensAssinaturas_(r) {
 /** Cria o processo e a pasta de evidências. Devolve o id e a chave de carregamento. */
 function docIniciar(d) {
   const erros = [];
-  ['nome', 'email', 'unidade', 'departamento', 'categoria', 'periodo', 'quadro', 'avaliador'].forEach(c => {
+  ['nome', 'email', 'unidade', 'categoria', 'periodo', 'quadro', 'avaliador'].forEach(c => {
     if (!d || !String(d[c] || '').trim()) erros.push(c);
   });
   if (erros.length) throw new Error('Preencha todos os campos obrigatórios dos dados do docente.');
   if (!QUADROS[d.quadro]) throw new Error('Quadro inválido.');
+  const cursos = [].concat(d.cursos || []).filter(x => SISTEMA.CURSOS.indexOf(x) >= 0);
+  const programas = [].concat(d.programas || []).filter(x => SISTEMA.PROGRAMAS.indexOf(x) >= 0);
+  if (!cursos.length && !programas.length) throw new Error('Seleccione pelo menos um curso ou um programa em que lecciona.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) throw new Error('Email do docente inválido.');
   const lista = config_().avaliadores.filter(a => a.email.toLowerCase() === String(d.avaliador).toLowerCase());
   const avaliador = lista.find(a => a.nome === d.avaliadorNome) || lista[0];
@@ -259,7 +277,8 @@ function docIniciar(d) {
 
   const r = {
     id, criadoEm: new Date().toISOString(), estado: ESTADOS.SUBMISSAO, quadro: d.quadro,
-    docente: { nome: d.nome.trim(), email: d.email.trim(), unidade: d.unidade.trim(), departamento: d.departamento.trim(),
+    docente: { nome: d.nome.trim(), email: d.email.trim(), unidade: d.unidade.trim(),
+               cursos, programas, departamento: cursos.concat(programas).join('; '),
                categoria: d.categoria.trim(), periodo: d.periodo.trim() },
     avaliador: { nome: avaliador.nome, email: avaliador.email },
     tokens: { up: token_(), a: token_(), d: token_(), v: token_() },
@@ -438,7 +457,8 @@ function gerarDocumentoFinal_(r) {
   b.appendParagraph('1. Dados do professor avaliado').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   tabela_(b, [
     ['Nome', r.docente.nome], ['Email', r.docente.email], ['Unidade Básica/Extensão', r.docente.unidade],
-    ['Departamento', r.docente.departamento], ['Categoria Profissional', r.docente.categoria],
+    ['Cursos', (r.docente.cursos || []).join('; ') || '—'], ['Programas', (r.docente.programas || []).join('; ') || '—'],
+    ['Categoria Profissional', r.docente.categoria],
     ['Período de Avaliação', r.docente.periodo], ['Função', QUADROS[r.quadro].funcao], ['Avaliador', r.avaliador.nome],
   ], false, [150, null]);
 
