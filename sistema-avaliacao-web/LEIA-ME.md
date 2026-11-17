@@ -18,7 +18,7 @@ Aplicação web no Google Apps Script, instalada numa conta institucional **@ucm
 | Tipo | Curso / Programa | Coordenador (avaliador) | Email |
 |---|---|---|---|
 | Curso | Administração e Gestão Hospitalar | Jordão António Cardoso | jcardoso@ucm.ac.mz |
-| Curso | Análises Clínicas e Laboratoriais | **por indicar** | — |
+| Curso | Análises Clínicas e Laboratoriais | Sónia Raquel | sraquel@ucm.ac.mz |
 | Curso | Enfermagem | Ana Paula Miguel | amiguel@ucm.ac.mz |
 | Curso | Farmácia | Manuel Canivete | mcanivete@ucm.ac.mz |
 | Curso | Medicina Geral | Elmano Gomonda | egomonda@ucm.ac.mz |
@@ -40,8 +40,7 @@ Estes dados ficam no separador **Configuração** da folha do Registo e podem se
    - clique em **+ → HTML**, dê o nome `Pagina`, apague o conteúdo e cole com o **2.º botão**;
    - clique em **Guardar**.
 4. **Instalar.** Na barra superior escolha a função **`instalar`** e clique em **Executar**. Autorize o acesso. O **Registo de execução** mostra o link da folha **"Registo — Avaliação de Desempenho Docente"**.
-5. **Confirmar a Configuração.** Abra a folha do Registo e, no separador **Configuração**:
-   - escreva o coordenador e o email de **Análises Clínicas e Laboratoriais**;
+5. **Confirmar a Configuração.** Abra a folha do Registo e, no separador **Configuração**, confirme os coordenadores:
    - na linha **Direcção**, escreva o nome e o email de quem decide. Pode haver mais do que uma linha "Direcção".
 6. **Publicar.** Clique em **Implementar → Nova implementação**, escolha **Aplicação Web** e preencha:
    - **Executar como:** Eu

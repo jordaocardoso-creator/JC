@@ -34,7 +34,7 @@ const IDS = {
 // "Configuração" do Registo. Depois disso, altere-os directamente nessa folha.
 const UNIDADES_PADRAO = [
   ['Curso', 'Administração e Gestão Hospitalar', 'Jordão António Cardoso', 'jcardoso@ucm.ac.mz'],
-  ['Curso', 'Análises Clínicas e Laboratoriais', 'Coordenador(a) por indicar', ''],
+  ['Curso', 'Análises Clínicas e Laboratoriais', 'Sónia Raquel', 'sraquel@ucm.ac.mz'],
   ['Curso', 'Enfermagem', 'Ana Paula Miguel', 'amiguel@ucm.ac.mz'],
   ['Curso', 'Farmácia', 'Manuel Canivete', 'mcanivete@ucm.ac.mz'],
   ['Curso', 'Medicina Geral', 'Elmano Gomonda', 'egomonda@ucm.ac.mz'],
