@@ -75,6 +75,10 @@ fieldset.opcoes.bad{border-color:var(--warn);background:var(--warn-soft)}
 fieldset.opcoes legend{font-weight:600;font-size:.92rem;padding:0 4px}
 label.opc{display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:.95rem}
 label.opc input{margin-top:4px;accent-color:var(--accent)}
+.coord{display:block;font-size:.8rem;color:var(--muted)}
+.avbox{background:var(--accent-soft);border-radius:8px;padding:10px 14px;font-size:.95rem}
+.avbox.warn{background:var(--warn-soft);color:var(--warn)}
+ul.av{margin:4px 0 0;padding-left:1.2rem}
 ol.hist{margin:0;padding-left:1.2rem;display:grid;gap:4px}
 @media (max-width:560px){.crit-top{grid-template-columns:1fr}}
 </style>
@@ -99,7 +103,7 @@ window.addEventListener('error', function (ev) {
     if (n > 0 && n <= linhas.length) extra += NL + 'Script ' + (i + 1) + ', linha ' + n + ': ' + linhas[n - 1].slice(0, 200);
   }
   box.textContent = 'Erro técnico (envie esta mensagem ao administrador):' + NL + (ev.message || ev.error) +
-    NL + 'Linha: ' + (n || '?') + ', coluna: ' + (ev.colno || '?') + ' · Versão da página: 2026-11-17-e' + extra;
+    NL + 'Linha: ' + (n || '?') + ', coluna: ' + (ev.colno || '?') + ' · Versão da página: 2026-11-17-f' + extra;
 });
 </script>
 
@@ -108,8 +112,7 @@ window.addEventListener('error', function (ev) {
 'use strict';
 const CTX = JSON.parse(new TextDecoder('utf-8').decode(Uint8Array.from(atob('<?!= ctx ?>'.split('-').join('+').split('_').join('/')), ch => ch.charCodeAt(0))));
 const S = CTX.sistema;
-const VERSAO_PAGINA = '2026-11-17-e';
-S.cursos = S.cursos || []; S.programas = S.programas || [];
+const VERSAO_PAGINA = '2026-11-17-f';
 const app = document.getElementById('app');
 const fmt = n => Number(n || 0).toFixed(2).replace('.', ',');
 const num = s => { const v = parseFloat(String(s ?? '').trim().replace(',', '.')); return isNaN(v) ? null : v; };
@@ -123,7 +126,7 @@ const call = (fn, ...args) => new Promise((res, rej) =>
   google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e && e.message ? e : new Error(String(e))))[fn](...args));
 
 function cabecalho(etapa, subtitulo) {
-  const nomes = ['1. Docente', '2. Avaliador', '3. Direcção', 'Documento final'];
+  const nomes = ['1. Docente', '2. Avaliadores', '3. Direcção', 'Documento final'];
   return `<header class="top">
     <div class="eyebrow">${esc(S.instituicao)} · Apêndice 3</div>
     <h1>${esc(S.titulo)}</h1>
@@ -148,13 +151,13 @@ function padAssinatura(canvas) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => canvas.addEventListener(t, () => des = false));
   return { limpar, vazio: () => vazio, png: () => canvas.toDataURL('image/png') };
 }
-function blocoAssinatura(id, rotulo, nomeInicial = '', comCargo = false, declaracao = '') {
+function blocoAssinatura(id, rotulo, nomeInicial, comCargo, declaracao) {
   return `<div class="sig" id="${id}">
     <div class="grid">
-      <label class="f">Nome completo de quem assina <span class="req">*</span><input type="text" id="${id}-nome" value="${esc(nomeInicial)}"></label>
+      <label class="f">Nome completo de quem assina <span class="req">*</span><input type="text" id="${id}-nome" value="${esc(nomeInicial || '')}"></label>
       ${comCargo ? `<label class="f">Cargo/Função<input type="text" id="${id}-cargo"></label>` : ''}
     </div>
-    <label class="f">${rotulo} <span class="req">*</span><span class="hint">Assine com o rato, o dedo ou uma caneta digital.</span></label>
+    <label class="f">${rotulo} <span class="req">*</span><span class="hint"> Assine com o rato, o dedo ou uma caneta digital.</span></label>
     <canvas id="${id}-canvas" aria-label="Área de assinatura"></canvas>
     <div class="btns"><button type="button" id="${id}-limpar">Limpar assinatura</button></div>
     <label class="choice"><input type="checkbox" id="${id}-decl"><span>${declaracao}</span></label>
@@ -166,52 +169,55 @@ function ligarAssinatura(id) {
   return pad;
 }
 
-/* ---------- Leitura de ficheiro ---------- */
 const lerBase64 = f => new Promise((res, rej) => { const r = new FileReader();
   r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(new Error('Não foi possível ler ' + f.name)); r.readAsDataURL(f); });
 
 /* ============================================================
    ETAPA 1 — DOCENTE
    ============================================================ */
+const TITULOS_TIPO = { 'Curso': 'Cursos', 'Programa': 'Programas', 'Ano Propedêutico': 'Ano Propedêutico' };
+
 function paginaDocente() {
   const Q = CTX.quadros;
-  app.innerHTML = cabecalho(0, 'Preencha os seus dados, escolha a função que exerce e indique a auto-avaliação em cada critério com as respectivas evidências (links e ficheiros PDF). No fim, assine e submeta ao seu avaliador.') + `
+  const grupos = S.tiposUnidade.map(t => ({ tipo: t, itens: CTX.unidades.filter(u => u.tipo === t) })).filter(g => g.itens.length);
+  app.innerHTML = cabecalho(0, 'Preencha os seus dados, marque os cursos e programas onde lecciona, escolha a função que exerce e indique a auto-avaliação em cada critério com as respectivas evidências (links e ficheiros PDF). No fim, assine e submeta. Os avaliadores são os coordenadores das unidades que marcar.') + `
   <section class="card">
     <div class="head"><h2>Dados do docente</h2><span class="tag">Passo 1</span></div>
     <div class="grid">
       <label class="f">Nome completo <span class="req">*</span><input type="text" id="nome"></label>
-      <label class="f">Email <span class="req">*</span><input type="email" id="email" placeholder="nome@exemplo.com"></label>
+      <label class="f">Email <span class="req">*</span><input type="email" id="email" placeholder="nome@ucm.ac.mz" value="${esc(CTX.emailUtilizador || '')}"></label>
       <label class="f">Unidade Básica/Extensão <span class="req">*</span><input type="text" id="unidade"></label>
       <label class="f">Categoria Profissional <span class="req">*</span>
         <select id="categoria"><option value="">Seleccione…</option><option>Professor Catedrático</option><option>Professor Associado</option><option>Professor Auxiliar</option><option>Assistente</option><option>Assistente Estagiário</option><option>Outra</option></select></label>
       <label class="f">Período de Avaliação <span class="req">*</span><input type="text" id="periodo" placeholder="Ex.: Janeiro a Dezembro de 2026"></label>
-      <label class="f">Avaliador <span class="req">*</span>
-        <select id="avaliador"><option value="">Seleccione…</option>${CTX.avaliadores.map(a => `<option value="${esc(a.email)}">${esc(a.nome)}</option>`).join('')}</select></label>
     </div>
-    <div class="grid" id="cursos-programas">
-      <fieldset class="opcoes" id="cursos"><legend>Cursos <span class="hint">(pode marcar vários)</span></legend>
-        ${S.cursos.map((c, i) => `<label class="opc"><input type="checkbox" name="curso" value="${esc(c)}" id="curso-${i}"> ${esc(c)}</label>`).join('')}</fieldset>
-      <fieldset class="opcoes" id="programas"><legend>Programas <span class="hint">(pode marcar vários)</span></legend>
-        ${S.programas.map((c, i) => `<label class="opc"><input type="checkbox" name="programa" value="${esc(c)}" id="programa-${i}"> ${esc(c)}</label>`).join('')}</fieldset>
-    </div>
-    <p class="hint" style="margin:0"><span class="req">*</span> Seleccione pelo menos um curso ou um programa em que lecciona. Pode marcar cursos e programas ao mesmo tempo.</p>
   </section>
   <section class="card">
-    <div class="head"><h2>Função que exerce</h2><span class="tag">Passo 2 · define o quadro a preencher</span></div>
+    <div class="head"><h2>Onde lecciona</h2><span class="tag">Passo 2 · define os avaliadores</span></div>
+    <div class="grid" id="unidades">
+      ${grupos.map(g => `<fieldset class="opcoes"><legend>${esc(TITULOS_TIPO[g.tipo] || g.tipo)} <span class="hint">(pode marcar vários)</span></legend>
+        ${g.itens.map((u, i) => `<label class="opc"><input type="checkbox" name="unid" value="${esc(u.nome)}" data-coord="${esc(u.coord)}" data-tem="${u.temCoord ? 1 : 0}" id="u-${esc(g.tipo.slice(0, 3))}-${i}">
+          <span>${esc(u.nome)}<span class="coord">Coordenador(a): ${esc(u.temCoord ? u.coord : 'por indicar')}</span></span></label>`).join('')}</fieldset>`).join('')}
+    </div>
+    <div id="avaliadores" class="avbox">Marque pelo menos um curso, programa ou o Ano Propedêutico. Os respectivos coordenadores serão os seus avaliadores.</div>
+  </section>
+  <section class="card">
+    <div class="head"><h2>Função que exerce</h2><span class="tag">Passo 3 · define o quadro a preencher</span></div>
     <div class="choices">
       ${Object.values(Q).map(q => `<label class="choice" data-q="${q.codigo}"><input type="radio" name="quadro" value="${q.codigo}">
         <span><b>${esc(q.nome)}</b><small>${esc(q.funcao)} · ${q.padroes.map(p => `${p.nome.split(' —')[0]} ${p.max}`).join(' + ')} pontos</small></span></label>`).join('')}
     </div>
   </section>
-  <div id="quadro"></div>
+  <div id="quadro" style="display:grid;gap:20px"></div>
   <section class="card" id="final" hidden>
-    <div class="head"><h2>Resumo e submissão</h2><span class="tag">Passo 4</span></div>
+    <div class="head"><h2>Resumo e submissão</h2><span class="tag">Passo 5</span></div>
     <div class="total"><span>Auto-avaliação total</span><span class="big" id="tot">0,00</span><span>/ 100</span></div>
     ${blocoAssinatura('sd', 'Assinatura do docente', '', false, 'Declaro que as informações e evidências apresentadas são verdadeiras e referem-se ao período de avaliação.')}
-    <div class="btns"><button class="primary" id="submeter">Assinar e submeter ao avaliador</button></div>
+    <div class="btns"><button class="primary" id="submeter">Assinar e submeter aos avaliadores</button></div>
     <div id="estado" role="status"></div>
   </section>`;
 
+  qTodos('input[name=unid]').forEach(c => c.onchange = mostrarAvaliadores);
   let pad = null;
   qTodos('input[name=quadro]').forEach(r => r.onchange = () => {
     qTodos('.choice[data-q]').forEach(c => c.classList.toggle('on', c.dataset.q === r.value));
@@ -222,10 +228,25 @@ function paginaDocente() {
   q1('#submeter').onclick = () => submeterDocente(pad);
 }
 
+function mostrarAvaliadores() {
+  const marcadas = qTodos('input[name=unid]:checked');
+  const box = q1('#avaliadores');
+  if (!marcadas.length) { box.className = 'avbox'; box.textContent = 'Marque pelo menos um curso, programa ou o Ano Propedêutico. Os respectivos coordenadores serão os seus avaliadores.'; return; }
+  const semCoord = marcadas.filter(c => c.dataset.tem !== '1').map(c => c.value);
+  const porCoord = {};
+  marcadas.filter(c => c.dataset.tem === '1').forEach(c => { (porCoord[c.dataset.coord] = porCoord[c.dataset.coord] || []).push(c.value); });
+  const nomes = Object.keys(porCoord);
+  box.className = semCoord.length ? 'avbox warn' : 'avbox';
+  box.innerHTML = `<b>${nomes.length === 1 ? 'Avaliador' : 'Avaliadores'} desta avaliação (${nomes.length}):</b>
+    <ul class="av">${nomes.map(n => `<li>${esc(n)} <span class="hint">(${esc(porCoord[n].join(', '))})</span></li>`).join('')}</ul>
+    ${semCoord.length ? `<div>Sem coordenador configurado: ${esc(semCoord.join(', '))}. Não é possível submeter com esta opção marcada; contacte a Direcção.</div>` : ''}
+    ${nomes.length > 1 ? '<div class="hint">Cada avaliador valida a sua auto-avaliação. O processo segue para a Direcção quando o último terminar.</div>' : ''}`;
+}
+
 function desenharQuadro(q) {
   q1('#quadro').innerHTML = q.padroes.map(p => `
-    <section class="card" style="margin-top:20px">
-      <div class="head"><h2>${esc(p.nome)}</h2><span class="tag">Passo 3 · máx. ${p.max} pontos</span></div>
+    <section class="card">
+      <div class="head"><h2>${esc(p.nome)}</h2><span class="tag">Passo 4 · máx. ${p.max} pontos</span></div>
       <div class="msg info">Em cada critério, indique a pontuação que considera ter obtido (0 se não realizou a actividade) e junte as evidências: descrição, link electrónico (Moodle, revista, repositório, Drive) e/ou ficheiros PDF, JPG ou PNG até ${S.maxMb} MB cada.</div>
       ${p.criterios.map(c => `
         <div class="crit" data-key="${c.key}" data-max="${c.max}" data-p="${p.k}">
@@ -235,7 +256,7 @@ function desenharQuadro(q) {
           </div>
           <div class="ev">
             <div class="grid">
-              <label class="f">Descrição da evidência <span class="hint">(opcional)</span><textarea class="desc" placeholder="Ex.: 3 turmas de Gestão Financeira, 1.º semestre"></textarea></label>
+              <label class="f">Descrição da evidência <span class="hint">(opcional)</span><textarea class="desc" placeholder="Ex.: 3 turmas de Enfermagem Geral, 1.º semestre"></textarea></label>
               <div style="display:grid;gap:10px">
                 <label class="f">Link da evidência electrónica <span class="hint">(opcional)</span><input type="url" class="link" placeholder="https:${BARRAS}"></label>
                 <label class="f">Anexar documentos (PDF/JPG/PNG) <span class="hint">(opcional, vários)</span><input type="file" class="anexos" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></label>
@@ -244,7 +265,7 @@ function desenharQuadro(q) {
             </div>
           </div>
         </div>`).join('')}
-      <div class="subtotal"><span>Subtotal ${esc(p.nome)}</span><span data-sub="${p.k}">0,00 / ${fmt(p.max)}</span></div>
+      <div class="subtotal"><span>Subtotal ${esc(p.nome)}</span><span data-sub="${p.k}" data-max="${p.max}">0,00 / ${fmt(p.max)}</span></div>
     </section>`).join('');
   qTodos('.auto').forEach(i => i.oninput = totaisDocente);
   qTodos('.anexos').forEach(i => i.onchange = () => {
@@ -265,24 +286,23 @@ function totaisDocente() {
     i.classList.toggle('bad', !ok);
     if (ok && v !== null) { sub[c.dataset.p] = (sub[c.dataset.p] || 0) + v; tot += v; }
   });
-  qTodos('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + s.textContent.split('/ ')[1]);
+  qTodos('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + fmt(s.dataset.max));
   q1('#tot').textContent = fmt(tot);
 }
 
 async function submeterDocente(pad) {
   const st = q1('#estado'), btn = q1('#submeter');
   const val = id => q1('#' + id).value.trim();
-  const dados = { nome: val('nome'), email: val('email'), unidade: val('unidade'),
-    cursos: qTodos('input[name=curso]:checked').map(i => i.value), programas: qTodos('input[name=programa]:checked').map(i => i.value),
-    categoria: val('categoria'), periodo: val('periodo'), avaliador: val('avaliador'),
-    avaliadorNome: q1('#avaliador').selectedOptions[0] ? q1('#avaliador').selectedOptions[0].textContent : '',
-    quadro: (q1('input[name=quadro]:checked') || {}).value, itens: {} };
-  const faltam = ['nome', 'email', 'unidade', 'categoria', 'periodo', 'avaliador'].filter(k => !dados[k]);
+  const marcadas = qTodos('input[name=unid]:checked');
+  const dados = { nome: val('nome'), email: val('email'), unidade: val('unidade'), categoria: val('categoria'), periodo: val('periodo'),
+    unidades: marcadas.map(i => i.value), quadro: (q1('input[name=quadro]:checked') || {}).value, itens: {} };
+  const faltam = ['nome', 'email', 'unidade', 'categoria', 'periodo'].filter(k => !dados[k]);
   faltam.forEach(k => q1('#' + k).classList.add('bad'));
   if (faltam.length) return msg(st, 'err', 'Preencha todos os dados do docente (campos assinalados).');
-  const semCurso = !dados.cursos.length && !dados.programas.length;
-  qTodos('fieldset.opcoes').forEach(f => f.classList.toggle('bad', semCurso));
-  if (semCurso) return msg(st, 'err', 'Seleccione pelo menos um curso ou um programa em que lecciona.');
+  qTodos('fieldset.opcoes').forEach(f => f.classList.toggle('bad', !marcadas.length));
+  if (!marcadas.length) return msg(st, 'err', 'Marque pelo menos um curso, programa ou o Ano Propedêutico onde lecciona.');
+  const semCoord = marcadas.filter(c => c.dataset.tem !== '1').map(c => c.value);
+  if (semCoord.length) return msg(st, 'err', 'Ainda não há coordenador configurado para: ' + esc(semCoord.join(', ')) + '. Desmarque essa opção ou contacte a Direcção.');
   const ficheiros = []; let erro = '';
   qTodos('.crit').forEach(c => {
     const v = num(q1('.auto', c).value), max = +c.dataset.max, link = q1('.link', c).value.trim();
@@ -295,7 +315,7 @@ async function submeterDocente(pad) {
     });
     dados.itens[c.dataset.key] = { auto: v, desc: q1('.desc', c).value, link };
   });
-  if (erro) return msg(st, 'err', erro);
+  if (erro) return msg(st, 'err', esc(erro));
   if (!q1('#sd-nome').value.trim() || pad.vazio() || !q1('#sd-decl').checked)
     return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
 
@@ -308,10 +328,10 @@ async function submeterDocente(pad) {
       msg(st, 'info', `A carregar evidências (${i + 1} de ${ficheiros.length}): ${esc(f.name)}…`);
       await call('docCarregar', id, up, key, f.name, f.type, await lerBase64(f));
     }
-    msg(st, 'info', 'A assinar e a enviar ao avaliador…');
+    msg(st, 'info', 'A assinar e a enviar aos avaliadores…');
     const r = await call('docFinalizar', id, up, { nome: q1('#sd-nome').value, declaracao: true, png: pad.png() });
     app.innerHTML = cabecalho(1, '') + `<section class="card"><h2>Submetido com sucesso</h2>
-      <div class="msg ok">O processo n.º ${esc(r.id)} foi enviado ao avaliador. Recebeu uma confirmação por email.</div>
+      <div class="msg ok">O processo n.º ${esc(r.id)} foi enviado a: ${esc(r.avaliadores.join(', '))}. Recebeu uma confirmação por email.</div>
       <p>Pode acompanhar o estado do processo neste link (também enviado por email):<br><a href="${esc(r.acompanhar)}">${esc(r.acompanhar)}</a></p></section>`;
   } catch (e) {
     msg(st, 'err', 'Não foi possível submeter: ' + esc(e.message));
@@ -320,16 +340,21 @@ async function submeterDocente(pad) {
 }
 
 /* ============================================================
-   Componentes comuns (avaliador / direcção)
+   Componentes comuns
    ============================================================ */
+const pillEstado = e => `<span class="pill ${e === 'concluida' ? 'v' : 'p'}">${e === 'concluida' ? 'Concluída' : 'Pendente'}</span>`;
 function dadosDocente(r) {
   const d = r.docente;
+  const porTipo = t => (d.unidades || []).filter(u => u.tipo === t).map(u => u.nome).join('; ') || '—';
   return `<section class="card"><div class="head"><h2>${esc(d.nome)}</h2><span class="tag">Processo ${esc(r.id)}</span></div>
     <div class="grid" style="font-size:.95rem">
-      <div><span class="hint">Unidade</span><br>${esc(d.unidade)}</div><div><span class="hint">Cursos</span><br>${esc((d.cursos || []).join('; ') || '—')}</div><div><span class="hint">Programas</span><br>${esc((d.programas || []).join('; ') || '—')}</div>
-      <div><span class="hint">Categoria</span><br>${esc(d.categoria)}</div><div><span class="hint">Período</span><br>${esc(d.periodo)}</div>
-      <div><span class="hint">Função / Quadro</span><br>${esc(CTX.quadros[r.quadro].nome)}</div><div><span class="hint">Avaliador</span><br>${esc(r.avaliador.nome)}</div>
+      <div><span class="hint">Unidade</span><br>${esc(d.unidade)}</div><div><span class="hint">Categoria</span><br>${esc(d.categoria)}</div>
+      <div><span class="hint">Período</span><br>${esc(d.periodo)}</div><div><span class="hint">Função / Quadro</span><br>${esc(CTX.quadros[r.quadro].nome)}</div>
+      <div><span class="hint">Cursos</span><br>${esc(porTipo('Curso'))}</div><div><span class="hint">Programas</span><br>${esc(porTipo('Programa'))}</div>
+      <div><span class="hint">Ano Propedêutico</span><br>${esc(porTipo('Ano Propedêutico'))}</div>
     </div>
+    <div><span class="hint">Avaliadores</span>
+      <ul class="av">${r.avaliadores.map(a => `<li>${esc(a.nome)} <span class="hint">(${esc(a.unidades.join(', '))})</span> ${pillEstado(a.estado)}</li>`).join('')}</ul></div>
     <div class="btns"><a href="${esc(r.pasta.url)}">Abrir a pasta de evidências no Google Drive</a></div></section>`;
 }
 function evidencias(it) {
@@ -347,18 +372,22 @@ function assinaturaVista(img, a, papel) {
 }
 
 /* ============================================================
-   ETAPA 2 — AVALIADOR
+   ETAPA 2 — AVALIADOR (coordenador)
    ============================================================ */
 function paginaAvaliador() {
-  const r = CTX.registo, q = CTX.quadros[r.quadro];
+  const r = CTX.registo, q = CTX.quadros[r.quadro], eu = r.avaliadores[CTX.eu];
   if (CTX.concluido) {
-    app.innerHTML = cabecalho(2, '') + `<section class="card"><div class="msg ok">Este processo já foi validado e está agora em: <b>${esc(r.estado)}</b>.</div></section>`;
+    const faltam = r.avaliadores.filter(a => a.estado !== 'concluida').map(a => a.nome);
+    app.innerHTML = cabecalho(1, '') + dadosDocente(r) + `<section class="card"><div class="msg ok">A sua validação deste processo já foi registada. Estado actual: <b>${esc(r.estado)}</b>.
+      ${faltam.length && r.estado === S.estados.AVALIADOR ? ' Aguarda ainda: ' + esc(faltam.join(', ')) + '.' : ''}</div></section>`;
     return;
   }
-  const ant = r.validacao || {};
-  app.innerHTML = cabecalho(1, 'Verifique as evidências de cada critério, confirme ou ajuste a pontuação, escreva os seus comentários e assine. A avaliação seguirá para a Direcção.') +
+  const ant = eu.validacao || {};
+  const devol = r.historico.filter(h => /Devolvido/.test(h.evento)).pop();
+  app.innerHTML = cabecalho(1, 'Verifique as evidências de cada critério, confirme ou ajuste a pontuação, escreva os seus comentários e assine.') +
+    `<div class="msg info">Está a avaliar como coordenador(a) de <b>${esc(eu.unidades.join(', '))}</b>.${r.avaliadores.length > 1 ? ' Este processo tem ' + r.avaliadores.length + ' avaliadores; segue para a Direcção quando o último concluir, com a média das pontuações.' : ''}</div>` +
     dadosDocente(r) +
-    (r.historico.some(h => /Devolvido/.test(h.evento)) ? `<div class="msg info"><b>Processo devolvido pela Direcção.</b> ${esc(r.historico.filter(h => /Devolvido/.test(h.evento)).pop().evento)}</div>` : '') +
+    (devol ? `<div class="msg info"><b>Processo devolvido pela Direcção.</b> ${esc(devol.evento)}</div>` : '') +
     q.padroes.map(p => `<section class="card">
       <div class="head"><h2>${esc(p.nome)}</h2><span class="tag">máx. ${p.max} pontos</span></div>
       ${p.criterios.map(c => { const it = r.itens[c.key], v = ant[c.key] || {}; return `
@@ -370,17 +399,17 @@ function paginaAvaliador() {
               <select class="estado"><option value="">Seleccione…</option>
                 ${['Validada', 'Parcialmente validada', 'Não validada'].map(o => `<option ${v.estado === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
             <label class="f">Pontuação validada <span class="req">*</span><input class="num pont" inputmode="decimal" value="${v.pont !== undefined ? fmt(v.pont) : ''}"></label>
-            <label class="f">Comentário do avaliador<textarea class="coment">${esc(v.coment || '')}</textarea></label>
+            <label class="f">Comentário<textarea class="coment">${esc(v.coment || '')}</textarea></label>
           </div>
         </div>`; }).join('')}
       <div class="subtotal"><span>Subtotal validado ${esc(p.nome)}</span><span data-sub="${p.k}" data-max="${p.max}">0,00 / ${fmt(p.max)}</span></div>
     </section>`).join('') + `
     <section class="card">
-      <div class="head"><h2>Parecer e assinatura do avaliador</h2></div>
-      <div class="total"><span>Auto-avaliação: <b>${fmt(r.totalAuto)}</b></span><span>Pontuação validada</span><span class="big" id="tot">0,00</span><span>/ 100</span></div>
-      <label class="f">Parecer geral do avaliador<textarea id="parecer" style="min-height:100px">${esc(r.parecer || '')}</textarea></label>
-      ${blocoAssinatura('sa', 'Assinatura do avaliador', r.avaliador.nome, true, 'Declaro que verifiquei as evidências apresentadas e que a pontuação validada corresponde ao desempenho comprovado.')}
-      <div class="btns"><button class="primary" id="submeter">Assinar e submeter à Direcção</button></div>
+      <div class="head"><h2>Parecer e assinatura</h2></div>
+      <div class="total"><span>Auto-avaliação: <b>${fmt(r.totalAuto)}</b></span><span>A sua pontuação validada</span><span class="big" id="tot">0,00</span><span>/ 100</span></div>
+      <label class="f">Parecer geral<textarea id="parecer" style="min-height:100px">${esc(eu.parecer || '')}</textarea></label>
+      ${blocoAssinatura('sa', 'Assinatura do avaliador', eu.nome, true, 'Declaro que verifiquei as evidências apresentadas e que a pontuação validada corresponde ao desempenho comprovado.')}
+      <div class="btns"><button class="primary" id="submeter">Assinar e submeter</button></div>
       <div id="estado" role="status"></div>
     </section>`;
   const pad = ligarAssinatura('sa');
@@ -405,11 +434,13 @@ function paginaAvaliador() {
     });
     if (erro) return msg(st, 'err', erro);
     if (!q1('#sa-nome').value.trim() || pad.vazio() || !q1('#sa-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
-    btn.disabled = true; msg(st, 'info', 'A guardar a validação e a enviar à Direcção…');
+    btn.disabled = true; msg(st, 'info', 'A guardar a sua validação…');
     try {
-      await call('avaSubmeter', r.id, CTX.t, { itens, parecer: q1('#parecer').value,
+      const res = await call('avaSubmeter', r.id, CTX.t, { itens, parecer: q1('#parecer').value,
         nome: q1('#sa-nome').value, cargo: q1('#sa-cargo').value, declaracao: true, png: pad.png() });
-      app.innerHTML = cabecalho(2, '') + `<section class="card"><div class="msg ok">Validação assinada e submetida à Direcção. Obrigado.</div></section>`;
+      app.innerHTML = cabecalho(res.faltam.length ? 1 : 2, '') + `<section class="card"><div class="msg ok">${res.faltam.length
+        ? 'Validação assinada e registada. O processo segue para a Direcção quando concluírem também: ' + esc(res.faltam.join(', ')) + '.'
+        : 'Validação assinada e registada. Era o último avaliador: o processo foi enviado à Direcção.'} Obrigado.</div></section>`;
     } catch (e) { msg(st, 'err', 'Não foi possível submeter: ' + esc(e.message)); btn.disabled = false; }
   };
 }
@@ -429,32 +460,39 @@ function totaisAvaliador() {
 function paginaDireccao() {
   const r = CTX.registo, q = CTX.quadros[r.quadro], A = CTX.assinaturas || {};
   if (CTX.concluido) {
-    app.innerHTML = cabecalho(3, '') + `<section class="card"><div class="msg ok">Este processo já foi decidido. Estado: <b>${esc(r.estado)}</b>.</div>
+    app.innerHTML = cabecalho(3, '') + `<section class="card"><div class="msg ok">Este processo já não está para decisão. Estado: <b>${esc(r.estado)}</b>.</div>
       ${r.pdf ? `<p><a href="${esc(r.pdf.url)}">Abrir o documento final (PDF)</a></p>` : ''}</section>`;
     return;
   }
-  app.innerHTML = cabecalho(2, 'Analise a avaliação validada e assinada pelo avaliador e registe a decisão final. Ao homologar, é gerado automaticamente o documento único do docente em PDF.') +
+  const varios = r.avaliadores.length > 1;
+  const nomeCurto = n => n.split(' ')[0] + (n.split(' ').length > 1 ? ' ' + n.split(' ').slice(-1)[0] : '');
+  app.innerHTML = cabecalho(2, 'Analise a avaliação validada e assinada pelos avaliadores e registe a decisão final. Ao homologar, é gerado automaticamente o documento único do docente em PDF.') +
     dadosDocente(r) + `
-    <section class="card"><div class="head"><h2>Resultados por critério</h2></div>
+    <section class="card"><div class="head"><h2>Resultados por critério</h2>${varios ? '<span class="tag">Pontuação validada = média dos avaliadores</span>' : ''}</div>
       <div class="scroll"><table>
-        <thead><tr><th>Critério</th><th class="n">Máx.</th><th class="n">Auto</th><th>Evidências</th><th>Validação</th><th class="n">Validado</th><th>Comentário</th></tr></thead>
-        <tbody>${q.padroes.map(p => `<tr><th colspan="7">${esc(p.nome)} (máx. ${p.max})</th></tr>` +
+        <thead><tr><th>Critério</th><th class="n">Máx.</th><th class="n">Auto</th><th>Evidências</th>
+          ${r.avaliadores.map(a => `<th class="n">${esc(nomeCurto(a.nome))}</th>`).join('')}${varios ? '<th class="n">Média</th>' : ''}<th>Validação</th><th>Comentários</th></tr></thead>
+        <tbody>${q.padroes.map(p => `<tr><th colspan="${7 + r.avaliadores.length - (varios ? 0 : 1)}">${esc(p.nome)} (máx. ${p.max})</th></tr>` +
           p.criterios.map(c => { const it = r.itens[c.key], v = r.validacao[c.key]; return `<tr>
             <td>${c.n}. ${esc(c.texto)}</td><td class="n">${fmt(c.max)}</td><td class="n">${fmt(it.auto)}</td>
             <td>${it.link ? `<a href="${esc(it.link)}">Link</a> ` : ''}${it.anexos.map(a => `<a href="${esc(a.url)}">📎 ${esc(a.nome)}</a>`).join('<br>')}${!it.link && !it.anexos.length ? '—' : ''}</td>
-            <td>${pill(v.estado)}</td><td class="n"><b>${fmt(v.pont)}</b></td><td>${esc(v.coment)}</td></tr>`; }).join('')).join('')}
+            ${r.avaliadores.map(a => `<td class="n">${fmt(a.validacao[c.key].pont)}</td>`).join('')}${varios ? `<td class="n"><b>${fmt(v.pont)}</b></td>` : ''}
+            <td>${pill(v.estado)}</td><td>${esc(v.coment)}</td></tr>`; }).join('')).join('')}
+          <tr><th>Total</th><th class="n">100</th><th class="n">${fmt(r.totalAuto)}</th><th></th>
+            ${r.avaliadores.map(a => `<th class="n">${fmt(a.total)}</th>`).join('')}${varios ? `<th class="n">${fmt(r.totalValidado)}</th>` : ''}<th></th><th></th></tr>
         </tbody></table></div>
-      <div class="total"><span>Auto-avaliação: <b>${fmt(r.totalAuto)}</b></span><span>Pontuação validada</span><span class="big">${fmt(r.totalValidado)}</span><span>/ 100</span></div>
+      <div class="total"><span>Auto-avaliação: <b>${fmt(r.totalAuto)}</b></span><span>Pontuação validada${varios ? ' (média)' : ''}</span><span class="big">${fmt(r.totalValidado)}</span><span>/ 100</span></div>
     </section>
-    <section class="card"><div class="head"><h2>Parecer do avaliador</h2></div>
-      <p style="margin:0;white-space:pre-wrap">${esc(r.parecer || '(sem parecer escrito)')}</p>
-      ${assinaturaVista(A.avaliador, r.assinAvaliador, 'Avaliador')}
+    <section class="card"><div class="head"><h2>Pareceres dos avaliadores</h2></div>
+      ${r.avaliadores.map((a, i) => `<div class="box"><b>${esc(a.nome)}</b> <span class="hint">coordenador(a) de ${esc(a.unidades.join(', '))}</span>
+        <p style="margin:0;white-space:pre-wrap">${esc(a.parecer || '(sem parecer escrito)')}</p>
+        ${assinaturaVista((A.avaliadores || [])[i], a.assin, 'Avaliador')}</div>`).join('')}
     </section>
     <section class="card"><div class="head"><h2>Decisão final da Direcção</h2></div>
       <div class="choices">
-        ${['Homologada', 'Homologada com alteração da pontuação', 'Devolvida ao avaliador'].map((d, i) =>
+        ${['Homologada', 'Homologada com alteração da pontuação', 'Devolvida aos avaliadores'].map((d, i) =>
           `<label class="choice"><input type="radio" name="dec" value="${d}" ${i === 0 ? 'checked' : ''}><span><b>${d}</b><small>${
-            ['Confirma a pontuação validada (' + fmt(r.totalValidado) + ').', 'Define outra pontuação final, com justificação no despacho.', 'Devolve ao avaliador para rever a validação, com o motivo no despacho.'][i]}</small></span></label>`).join('')}
+            ['Confirma a pontuação validada (' + fmt(r.totalValidado) + ').', 'Define outra pontuação final, com justificação no despacho.', 'Devolve a todos os avaliadores para rever a validação, com o motivo no despacho.'][i]}</small></span></label>`).join('')}
       </div>
       <div class="grid">
         <label class="f">Pontuação final (0 a 100)<input class="num" id="pfinal" inputmode="decimal" value="${fmt(r.totalValidado)}" readonly></label>
@@ -465,23 +503,24 @@ function paginaDireccao() {
       <div id="estado" role="status"></div>
     </section>`;
   const pad = ligarAssinatura('sdir');
+  const marcar = () => qTodos('.choice').forEach(c => c.classList.toggle('on', !!(q1('input[name=dec]', c) || {}).checked));
   qTodos('input[name=dec]').forEach(i => i.onchange = () => {
     const alt = i.value === 'Homologada com alteração da pontuação';
     q1('#pfinal').readOnly = !alt; if (!alt) q1('#pfinal').value = fmt(r.totalValidado);
-    qTodos('.choice').forEach(c => c.classList.toggle('on', q1('input', c) && q1('input', c).checked));
+    marcar();
   });
-  qTodos('.choice').forEach(c => c.classList.toggle('on', !!(q1('input[name=dec]', c) || {}).checked));
+  marcar();
   q1('#submeter').onclick = async () => {
     const st = q1('#estado'), btn = q1('#submeter'), dec = q1('input[name=dec]:checked').value;
     if (dec !== 'Homologada' && !q1('#despacho').value.trim()) return msg(st, 'err', 'Escreva o despacho com a justificação.');
     if (!q1('#sdir-nome').value.trim() || pad.vazio() || !q1('#sdir-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
-    btn.disabled = true; msg(st, 'info', dec === 'Devolvida ao avaliador' ? 'A devolver ao avaliador…' : 'A registar a decisão e a gerar o documento final em PDF…');
+    btn.disabled = true; msg(st, 'info', dec === 'Devolvida aos avaliadores' ? 'A devolver aos avaliadores…' : 'A registar a decisão e a gerar o documento final em PDF…');
     try {
       const res = await call('dirSubmeter', r.id, CTX.t, { decisao: dec, pontFinal: q1('#pfinal').value,
         despacho: q1('#despacho').value, nome: q1('#sdir-nome').value, cargo: q1('#sdir-cargo').value, declaracao: true, png: pad.png() });
       app.innerHTML = cabecalho(res.devolvido ? 1 : 3, '') + `<section class="card">${res.devolvido
-        ? '<div class="msg ok">Processo devolvido ao avaliador. Ele recebeu um email com o despacho.</div>'
-        : `<div class="msg ok">Decisão registada. O documento final foi gerado e enviado ao docente e ao avaliador.</div><p><a href="${esc(res.pdf)}">Abrir o documento final (PDF)</a></p>`}</section>`;
+        ? '<div class="msg ok">Processo devolvido aos avaliadores. Cada um recebeu um email com o despacho e um link novo.</div>'
+        : `<div class="msg ok">Decisão registada. O documento final foi gerado e enviado ao docente e aos avaliadores.</div><p><a href="${esc(res.pdf)}">Abrir o documento final (PDF)</a></p>`}</section>`;
     } catch (e) { msg(st, 'err', 'Não foi possível registar: ' + esc(e.message)); btn.disabled = false; }
   };
 }
@@ -494,6 +533,7 @@ function paginaVer() {
   app.innerHTML = cabecalho(etapa, 'Estado do seu processo de avaliação.') + `<section class="card">
     <div class="head"><h2>${esc(r.docente.nome)}</h2><span class="tag">Processo ${esc(r.id)}</span></div>
     <div class="msg ${r.estado === S.estados.CONCLUIDA ? 'ok' : 'info'}">Estado actual: <b>${esc(r.estado)}</b></div>
+    <div><span class="hint">Avaliadores</span><ul class="av">${r.avaliadores.map(a => `<li>${esc(a.nome)} <span class="hint">(${esc(a.unidades.join(', '))})</span> ${pillEstado(a.estado)}</li>`).join('')}</ul></div>
     ${r.pdf ? `<p>O documento final foi enviado para o seu email. <a href="${esc(r.pdf.url)}">Abrir no Google Drive</a></p>` : ''}
     <h3>Histórico</h3><ol class="hist">${r.historico.map(h => `<li>${esc(h.data)} — ${esc(h.evento)}</li>`).join('')}</ol></section>`;
 }

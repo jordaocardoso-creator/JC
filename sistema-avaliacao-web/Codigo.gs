@@ -1,11 +1,12 @@
 
 // ============================================================================
 // SISTEMA DE AVALIAÇÃO DO DESEMPENHO DO PROFESSOR A TEMPO INTEIRO
-// Circuito: DOCENTE (auto-avaliação + evidências) → AVALIADOR (validação +
-// assinatura) → DIRECÇÃO (decisão final) → DOCUMENTO ÚNICO EM PDF por docente.
+// Circuito: DOCENTE (auto-avaliação + evidências) → COORDENADORES dos cursos e
+// programas seleccionados (validação + assinatura, cada um) → DIRECÇÃO
+// (decisão final) → DOCUMENTO ÚNICO EM PDF por docente.
 // Baseado no Apêndice 3 (Quadro 1 e Quadro 2).
 // Ficheiros do projecto Apps Script:
-// • Codigo.gs   (este ficheiro)
+// • Code.gs     (este ficheiro)
 // • Pagina.html (interface web)
 // Instalação: ver LEIA-ME.
 // ============================================================================
@@ -18,42 +19,45 @@ const SISTEMA = {
   INSTITUICAO: 'Universidade Católica de Moçambique',
   TAMANHO_MAX_MB: 10,                     // tamanho máximo por ficheiro anexado
   TIPOS_PERMITIDOS: ['application/pdf', 'image/jpeg', 'image/png'],
-  // Opções que o docente pode seleccionar (pode marcar vários cursos e/ou vários programas)
-  CURSOS: [
-    'Administração e Gestão Hospitalar',
-    'Análises Clínicas e Laboratoriais',
-    'Farmácia',
-    'Enfermagem',
-    'Medicina Geral',
-    'Psicologia Clínica',
-    'Assistência Social',
-  ],
-  PROGRAMAS: [
-    'Mestrado em Gestão de Serviços de Saúde',
-    'Mestrado em Psicologia',
-    'Mestrado em Saúde Pública',
-  ],
 };
 
-// Pastas e folha já criadas no Google Drive do proprietário (dispensa a função "instalar").
-// Para instalar noutra conta, deixe os três valores vazios ('') e execute "instalar".
+// Pastas e folha do sistema. Deixe vazio ('') e execute "instalar" uma vez: são criadas
+// automaticamente na conta que executa o script.
 const IDS = {
-  RAIZ: '14L3o0K-nYPxG1WBC_B373cW110MCTj3j',        // Avaliação de Desempenho Docente — Sistema
-  PROCESSOS: '1n09za5eRjcLhsF5cSCdvqUhXTjbeepMe',   // Processos por docente
-  REGISTO: '1oQ2Lubm5nFFl8Y5J-1C-xMkUb9g_z_Xvh6aQcPS_8nU', // Registo — Avaliação de Desempenho Docente
+  RAIZ: '',
+  PROCESSOS: '',
+  REGISTO: '',
 };
 
-const VERSAO = '2026-11-17-e';   // tem de ser igual à versão em Pagina.html
+// Cursos, programas e Ano Propedêutico com os respectivos coordenadores (avaliadores).
+// Estes valores só são usados pela função "instalar" para preencher o separador
+// "Configuração" do Registo. Depois disso, altere-os directamente nessa folha.
+const UNIDADES_PADRAO = [
+  ['Curso', 'Administração e Gestão Hospitalar', 'Jordão António Cardoso', 'jcardoso@ucm.ac.mz'],
+  ['Curso', 'Análises Clínicas e Laboratoriais', 'Coordenador(a) por indicar', ''],
+  ['Curso', 'Enfermagem', 'Ana Paula Miguel', 'amiguel@ucm.ac.mz'],
+  ['Curso', 'Farmácia', 'Manuel Canivete', 'mcanivete@ucm.ac.mz'],
+  ['Curso', 'Medicina Geral', 'Elmano Gomonda', 'egomonda@ucm.ac.mz'],
+  ['Curso', 'Psicologia Clínica e Assistência Social', 'Roda Nhavoto', 'rnhavoto@ucm.ac.mz'],
+  ['Programa', 'Mestrado em Gestão de Serviços de Saúde', 'Jordão António Cardoso', 'jcardoso@ucm.ac.mz'],
+  ['Programa', 'Mestrado em Psicologia em Saúde', 'Roda Nhavoto', 'rnhavoto@ucm.ac.mz'],
+  ['Programa', 'Mestrado em Saúde Pública', 'Brigite Zongo', 'szongo@ucm.ac.mz'],
+  ['Ano Propedêutico', 'Ano Propedêutico', 'Nilton Maumane', 'njmaumane@ucm.ac.mz'],
+  ['Direcção', '', 'Director(a) da Unidade (substituir)', 'direccao@ucm.ac.mz'],
+];
+const TIPOS_UNIDADE = ['Curso', 'Programa', 'Ano Propedêutico'];
+
+const VERSAO = '2026-11-17-f';   // tem de ser igual à versão em Pagina.html
 
 const ESTADOS = {
   SUBMISSAO: 'Em submissão',
-  AVALIADOR: 'Aguarda validação do avaliador',
+  AVALIADOR: 'Aguarda validação dos avaliadores',
   DIRECCAO: 'Aguarda decisão da Direcção',
   CONCLUIDA: 'Concluída',
 };
 
 const COLUNAS = ['ID', 'Submetido em', 'Docente', 'Email do docente', 'Unidade', 'Cursos e programas', 'Quadro',
-  'Avaliador', 'Estado', 'Auto-avaliação', 'Pontuação validada', 'Pontuação final', 'Decisão',
+  'Avaliadores', 'Estado', 'Auto-avaliação', 'Pontuação validada', 'Pontuação final', 'Decisão',
   'Pasta de evidências', 'Documento final', 'Dados (não editar)'];
 
 // ---------------------------------------------------------------------------
@@ -143,24 +147,23 @@ function instalar() {
   reg.hideColumns(COLUNAS.length);
 
   const cfg = ss.insertSheet('Configuração');
-  cfg.getRange('A1:C1').setValues([['Papel', 'Nome', 'Email']])
+  cfg.getRange('A1:D1').setValues([['Tipo', 'Curso / Programa', 'Coordenador (avaliador)', 'Email']])
     .setFontWeight('bold').setBackground('#0f5c4d').setFontColor('#ffffff');
-  cfg.getRange('A2:C4').setValues([
-    ['Avaliador', 'Nome do Avaliador 1 (substituir)', 'avaliador1@exemplo.com'],
-    ['Avaliador', 'Nome do Avaliador 2 (substituir)', 'avaliador2@exemplo.com'],
-    ['Direcção', 'Director(a) da Unidade (substituir)', 'direccao@exemplo.com'],
-  ]);
-  cfg.getRange('A2:A50').setDataValidation(
-    SpreadsheetApp.newDataValidation().requireValueInList(['Avaliador', 'Direcção'], true).build());
-  cfg.getRange('E1').setValue('Instruções: escreva uma linha por pessoa. Os avaliadores aparecem na lista do formulário do docente. ' +
-    'Todas as pessoas com o papel "Direcção" recebem os processos validados para decisão final. Use contas Google (Gmail ou institucional).');
-  cfg.setColumnWidth(2, 260); cfg.setColumnWidth(3, 260); cfg.setColumnWidth(5, 420);
-  cfg.getRange('E1').setWrap(true);
+  cfg.getRange(2, 1, UNIDADES_PADRAO.length, 4).setValues(UNIDADES_PADRAO);
+  cfg.getRange('A2:A80').setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(TIPOS_UNIDADE.concat(['Direcção']), true).build());
+  cfg.getRange('F1').setValue('Instruções: uma linha por curso, programa ou Ano Propedêutico, com o coordenador que o avalia. ' +
+    'O docente marca as unidades onde lecciona e o sistema envia a avaliação aos respectivos coordenadores. ' +
+    'Um coordenador com várias unidades recebe uma só avaliação. Todas as linhas com o tipo "Direcção" recebem os ' +
+    'processos validados para a decisão final. Uma unidade sem email de coordenador não pode ser submetida.');
+  cfg.setColumnWidth(2, 300); cfg.setColumnWidth(3, 240); cfg.setColumnWidth(4, 220); cfg.setColumnWidth(6, 420);
+  cfg.getRange('F1').setWrap(true);
+  cfg.setFrozenRows(1);
 
   props.setProperties({ RAIZ: raiz.getId(), PROCESSOS: processos.getId(), REGISTO: ss.getId() });
 
   Logger.log('Instalação concluída.');
-  Logger.log('1) Preencha avaliadores e Direcção no separador "Configuração": ' + ss.getUrl());
+  Logger.log('1) Confirme os coordenadores e a Direcção no separador "Configuração": ' + ss.getUrl());
   Logger.log('2) Depois: Implementar → Nova implementação → Aplicação Web.');
   Logger.log('Pasta do sistema: ' + raiz.getUrl());
 }
@@ -177,7 +180,7 @@ function doGet(e) {
     ctx = { modo: 'erro', mensagem: err.message };
   }
   ctx.sistema = { titulo: SISTEMA.TITULO, instituicao: SISTEMA.INSTITUICAO, maxMb: SISTEMA.TAMANHO_MAX_MB,
-                  tipos: SISTEMA.TIPOS_PERMITIDOS, estados: ESTADOS, cursos: SISTEMA.CURSOS, programas: SISTEMA.PROGRAMAS, versao: VERSAO };
+                  tipos: SISTEMA.TIPOS_PERMITIDOS, estados: ESTADOS, tiposUnidade: TIPOS_UNIDADE, versao: VERSAO };
   const t = HtmlService.createTemplateFromFile('Pagina');
   // Enviado em base64 'web-safe' (letras, números, - _ =): sem barras, que o serviço HTML da Google pode cortar.
   t.ctx = Utilities.base64EncodeWebSafe(JSON.stringify(ctx), Utilities.Charset.UTF_8);
@@ -189,15 +192,19 @@ function doGet(e) {
 function contextoPagina_(p) {
   const modo = p.modo || 'docente';
   if (modo === 'docente') {
-    return { modo, quadros: quadrosParaCliente_(), avaliadores: config_().avaliadores.map(a => ({ nome: a.nome, email: a.email })) };
+    let email = '';
+    try { email = Session.getActiveUser().getEmail() || ''; } catch (e) { /* sem acesso ao email */ }
+    return { modo, quadros: quadrosParaCliente_(), emailUtilizador: email,
+             unidades: config_().unidades.map(u => ({ tipo: u.tipo, nome: u.nome, coord: u.coord, temCoord: !!u.email })) };
   }
   const r = obterRegisto_(p.id);
   if (!r) throw new Error('Processo não encontrado. Verifique o link recebido por email.');
   const publico = registoPublico_(r);
   if (modo === 'avaliador') {
-    exigirToken_(r, 'a', p.t);
-    return { modo, t: p.t, quadros: quadrosParaCliente_(), registo: publico, assinaturas: imagensAssinaturas_(r),
-             concluido: r.estado !== ESTADOS.AVALIADOR };
+    const eu = r.avaliadores.findIndex(a => a.token && a.token === p.t);
+    if (eu < 0) throw new Error('Link inválido ou expirado. Use o link mais recente recebido por email.');
+    return { modo, t: p.t, eu, quadros: quadrosParaCliente_(), registo: publico, assinaturas: imagensAssinaturas_(r),
+             concluido: r.estado !== ESTADOS.AVALIADOR || r.avaliadores[eu].estado === 'concluida' };
   }
   if (modo === 'direccao') {
     exigirToken_(r, 'd', p.t);
@@ -207,6 +214,7 @@ function contextoPagina_(p) {
   if (modo === 'ver') {
     exigirToken_(r, 'v', p.t);
     return { modo, registo: { id: r.id, estado: r.estado, docente: r.docente, historico: r.historico,
+             avaliadores: r.avaliadores.map(a => ({ nome: a.nome, unidades: a.unidades, estado: a.estado })),
              pdf: r.estado === ESTADOS.CONCLUIDA ? r.pdf : null } };
   }
   throw new Error('Página desconhecida.');
@@ -223,22 +231,26 @@ function quadrosParaCliente_() {
   return out;
 }
 
-/** Remove os tokens antes de enviar o registo para o navegador. */
+/** Remove as chaves de acesso antes de enviar o registo para o navegador. */
 function registoPublico_(r) {
   const c = JSON.parse(JSON.stringify(r));
   delete c.tokens;
+  (c.avaliadores || []).forEach(a => delete a.token);
   return c;
 }
 
+function imagemBase64_(id) {
+  if (!id) return null;
+  try { return 'data:image/png;base64,' + Utilities.base64Encode(DriveApp.getFileById(id).getBlob().getBytes()); }
+  catch (e) { return null; }
+}
+
 function imagensAssinaturas_(r) {
-  const out = {};
-  [['docente', r.assinDocente], ['avaliador', r.assinAvaliador], ['direccao', r.direccao]].forEach(([k, a]) => {
-    if (a && a.imgId) {
-      try { out[k] = 'data:image/png;base64,' + Utilities.base64Encode(DriveApp.getFileById(a.imgId).getBlob().getBytes()); }
-      catch (e) { /* imagem indisponível */ }
-    }
-  });
-  return out;
+  return {
+    docente: imagemBase64_(r.assinDocente && r.assinDocente.imgId),
+    avaliadores: (r.avaliadores || []).map(a => imagemBase64_(a.assin && a.assin.imgId)),
+    direccao: imagemBase64_(r.direccao && r.direccao.imgId),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -247,18 +259,27 @@ function imagensAssinaturas_(r) {
 /** Cria o processo e a pasta de evidências. Devolve o id e a chave de carregamento. */
 function docIniciar(d) {
   const erros = [];
-  ['nome', 'email', 'unidade', 'categoria', 'periodo', 'quadro', 'avaliador'].forEach(c => {
+  ['nome', 'email', 'unidade', 'categoria', 'periodo', 'quadro'].forEach(c => {
     if (!d || !String(d[c] || '').trim()) erros.push(c);
   });
   if (erros.length) throw new Error('Preencha todos os campos obrigatórios dos dados do docente.');
   if (!QUADROS[d.quadro]) throw new Error('Quadro inválido.');
-  const cursos = [].concat(d.cursos || []).filter(x => SISTEMA.CURSOS.indexOf(x) >= 0);
-  const programas = [].concat(d.programas || []).filter(x => SISTEMA.PROGRAMAS.indexOf(x) >= 0);
-  if (!cursos.length && !programas.length) throw new Error('Seleccione pelo menos um curso ou um programa em que lecciona.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) throw new Error('Email do docente inválido.');
-  const lista = config_().avaliadores.filter(a => a.email.toLowerCase() === String(d.avaliador).toLowerCase());
-  const avaliador = lista.find(a => a.nome === d.avaliadorNome) || lista[0];
-  if (!avaliador) throw new Error('Seleccione um avaliador da lista.');
+
+  // Unidades seleccionadas → coordenadores (avaliadores), agrupados por email
+  const cfg = config_();
+  const escolhidas = cfg.unidades.filter(u => [].concat(d.unidades || []).indexOf(u.nome) >= 0);
+  if (!escolhidas.length) throw new Error('Seleccione pelo menos um curso, programa ou o Ano Propedêutico.');
+  const semCoord = escolhidas.filter(u => !u.email);
+  if (semCoord.length) throw new Error('"' + semCoord.map(u => u.nome).join('", "') +
+    '" ainda não tem coordenador configurado. Contacte a Direcção ou desmarque essa opção.');
+  const porEmail = {};
+  escolhidas.forEach(u => {
+    const k = u.email.toLowerCase();
+    if (!porEmail[k]) porEmail[k] = { nome: u.coord, email: u.email, unidades: [], token: token_(), estado: 'pendente' };
+    porEmail[k].unidades.push(u.nome);
+  });
+  const avaliadores = Object.keys(porEmail).map(k => porEmail[k]);
 
   const itens = {};
   listaCriterios_(d.quadro).forEach(c => {
@@ -279,10 +300,11 @@ function docIniciar(d) {
   const r = {
     id, criadoEm: new Date().toISOString(), estado: ESTADOS.SUBMISSAO, quadro: d.quadro,
     docente: { nome: d.nome.trim(), email: d.email.trim(), unidade: d.unidade.trim(),
-               cursos, programas, departamento: cursos.concat(programas).join('; '),
+               unidades: escolhidas.map(u => ({ tipo: u.tipo, nome: u.nome })),
+               departamento: escolhidas.map(u => u.nome).join('; '),
                categoria: d.categoria.trim(), periodo: d.periodo.trim() },
-    avaliador: { nome: avaliador.nome, email: avaliador.email },
-    tokens: { up: token_(), a: token_(), d: token_(), v: token_() },
+    avaliadores,
+    tokens: { up: token_(), d: token_(), v: token_() },
     pasta: { id: pasta.getId(), url: pasta.getUrl() },
     itens, totalAuto: soma_(Object.keys(itens).map(k => itens[k].auto)),
     historico: [{ data: agora_(), evento: 'Processo criado pelo docente' }],
@@ -311,7 +333,7 @@ function docCarregar(id, up, key, nome, tipo, b64) {
   });
 }
 
-/** Assinatura e submissão ao avaliador. */
+/** Assinatura e submissão aos coordenadores. */
 function docFinalizar(id, up, assinatura) {
   return comBloqueio_(() => {
     const r = obterRegisto_(id);
@@ -321,33 +343,42 @@ function docFinalizar(id, up, assinatura) {
     r.assinDocente = { nome: assinatura.nome.trim(), data: agora_(), imgId: guardarAssinatura_(r, 'docente', assinatura.png) };
     r.estado = ESTADOS.AVALIADOR;
     r.submetidoEm = agora_();
-    r.historico.push({ data: agora_(), evento: 'Submetido pelo docente ao avaliador ' + r.avaliador.nome });
-    partilharPasta_(r, [r.avaliador.email]);
+    r.historico.push({ data: agora_(), evento: 'Submetido pelo docente aos avaliadores: ' + nomesAvaliadores_(r) });
+    partilharPasta_(r, r.avaliadores.map(a => a.email));
     guardarRegisto_(r);
 
-    enviarEmail_(r.avaliador.email, 'Avaliação de desempenho para validar — ' + r.docente.nome,
-      '<p>Caro(a) ' + esc_(r.avaliador.nome) + ',</p>' +
-      '<p>O(a) docente <b>' + esc_(r.docente.nome) + '</b> (' + esc_(r.docente.departamento) + ') submeteu a auto-avaliação ' +
-      'do período <b>' + esc_(r.docente.periodo) + '</b> e indicou-o(a) como avaliador(a).</p>' +
-      '<p>' + botao_(link_('avaliador', r), 'Abrir e validar evidências') + '</p>' +
-      '<p>Pasta de evidências: <a href="' + r.pasta.url + '">' + r.pasta.url + '</a></p>');
+    r.avaliadores.forEach(a => emailAvaliador_(r, a, ''));
     enviarEmail_(r.docente.email, 'Auto-avaliação submetida — ' + r.id,
-      '<p>Caro(a) ' + esc_(r.docente.nome) + ',</p><p>A sua auto-avaliação foi submetida com sucesso ao avaliador(a) <b>' +
-      esc_(r.avaliador.nome) + '</b>. Auto-avaliação: <b>' + fmt_(r.totalAuto) + ' / 100</b>.</p>' +
+      '<p>Caro(a) ' + esc_(r.docente.nome) + ',</p><p>A sua auto-avaliação foi submetida com sucesso. ' +
+      'Auto-avaliação: <b>' + fmt_(r.totalAuto) + ' / 100</b>.</p>' +
+      '<p>Avaliadores: <b>' + esc_(nomesAvaliadores_(r)) + '</b>. Depois de todos validarem, o processo segue para a Direcção.</p>' +
       '<p>' + botao_(link_('ver', r), 'Acompanhar o processo') + '</p>' +
       '<p>Receberá o documento final por email após a decisão da Direcção.</p>');
-    return { id: r.id, acompanhar: link_('ver', r) };
+    return { id: r.id, acompanhar: link_('ver', r), avaliadores: r.avaliadores.map(a => a.nome) };
   });
 }
 
+function emailAvaliador_(r, a, nota) {
+  enviarEmail_(a.email, 'Avaliação de desempenho para validar — ' + r.docente.nome,
+    '<p>Caro(a) ' + esc_(a.nome) + ',</p>' + (nota || '') +
+    '<p>O(a) docente <b>' + esc_(r.docente.nome) + '</b> submeteu a auto-avaliação do período <b>' + esc_(r.docente.periodo) +
+    '</b>. Como coordenador(a) de <b>' + esc_(a.unidades.join(', ')) + '</b>, é um dos avaliadores deste processo' +
+    (r.avaliadores.length > 1 ? ' (avaliadores: ' + esc_(nomesAvaliadores_(r)) + ')' : '') + '.</p>' +
+    '<p>' + botao_(link_('avaliador', r, a.token), 'Abrir e validar evidências') + '</p>' +
+    '<p>Pasta de evidências: <a href="' + r.pasta.url + '">' + r.pasta.url + '</a></p>');
+}
+
 // ---------------------------------------------------------------------------
-// 6. ETAPA 2 — AVALIADOR
+// 6. ETAPA 2 — AVALIADORES (coordenadores)
 // ---------------------------------------------------------------------------
 function avaSubmeter(id, t, v) {
   return comBloqueio_(() => {
     const r = obterRegisto_(id);
-    exigirToken_(r, 'a', t);
+    if (!r) throw new Error('Processo não encontrado.');
+    const a = r.avaliadores.find(x => x.token && x.token === t);
+    if (!a) throw new Error('Link inválido ou expirado. Use o link mais recente recebido por email.');
     if (r.estado !== ESTADOS.AVALIADOR) throw new Error('Este processo já não está na fase de validação.');
+    if (a.estado === 'concluida') throw new Error('Já submeteu a sua validação deste processo.');
     if (!v || !String(v.nome || '').trim() || !v.declaracao || !v.png)
       throw new Error('Escreva o seu nome, assine no quadro e confirme a declaração.');
     const validacao = {};
@@ -359,13 +390,23 @@ function avaSubmeter(id, t, v) {
       if (pont === null || pont < 0 || pont > c.max + 1e-9) throw new Error('Pontuação validada inválida em "' + c.texto + '".');
       validacao[c.key] = { estado: x.estado, pont: x.estado === 'Não validada' ? 0 : pont, coment: String(x.coment || '').slice(0, 2000) };
     });
-    r.validacao = validacao;
-    r.totalValidado = soma_(Object.keys(validacao).map(k => validacao[k].pont));
-    r.parecer = String(v.parecer || '').slice(0, 5000);
-    r.assinAvaliador = { nome: v.nome.trim(), cargo: String(v.cargo || '').trim(), data: agora_(),
-                         imgId: guardarAssinatura_(r, 'avaliador', v.png) };
+    a.validacao = validacao;
+    a.total = soma_(Object.keys(validacao).map(k => validacao[k].pont));
+    a.parecer = String(v.parecer || '').slice(0, 5000);
+    a.assin = { nome: v.nome.trim(), cargo: String(v.cargo || '').trim(), data: agora_(), imgId: guardarAssinatura_(r, 'avaliador ' + a.nome, v.png) };
+    a.estado = 'concluida';
+    r.historico.push({ data: agora_(), evento: 'Validado e assinado por ' + a.nome + ' (' + a.unidades.join(', ') + ')' });
+
+    const faltam = r.avaliadores.filter(x => x.estado !== 'concluida');
+    if (faltam.length) {
+      guardarRegisto_(r);
+      return { ok: true, faltam: faltam.map(x => x.nome) };
+    }
+
+    // Último avaliador: combina as validações e envia à Direcção
+    combinarValidacoes_(r);
     r.estado = ESTADOS.DIRECCAO;
-    r.historico.push({ data: agora_(), evento: 'Validado e assinado pelo avaliador; submetido à Direcção' });
+    r.historico.push({ data: agora_(), evento: 'Todos os avaliadores concluíram; submetido à Direcção' });
     const direccao = config_().direccao;
     if (!direccao.length) throw new Error('Não há nenhum email da Direcção no separador "Configuração" do Registo.');
     partilharPasta_(r, direccao.map(x => x.email));
@@ -373,14 +414,32 @@ function avaSubmeter(id, t, v) {
 
     enviarEmail_(direccao.map(x => x.email).join(','), 'Avaliação de desempenho para decisão — ' + r.docente.nome,
       '<p>O processo de avaliação de <b>' + esc_(r.docente.nome) + '</b> (' + esc_(r.docente.departamento) + ', ' +
-      esc_(r.docente.periodo) + ') foi validado e assinado por <b>' + esc_(r.assinAvaliador.nome) + '</b>.</p>' +
-      '<p>Auto-avaliação: ' + fmt_(r.totalAuto) + ' / 100 · Pontuação validada: <b>' + fmt_(r.totalValidado) + ' / 100</b></p>' +
+      esc_(r.docente.periodo) + ') foi validado e assinado por todos os avaliadores: <b>' + esc_(nomesAvaliadores_(r)) + '</b>.</p>' +
+      '<p>Auto-avaliação: ' + fmt_(r.totalAuto) + ' / 100 · Pontuação validada (média dos avaliadores): <b>' +
+      fmt_(r.totalValidado) + ' / 100</b></p>' +
       '<p>' + botao_(link_('direccao', r), 'Abrir para decisão final') + '</p>');
-    enviarEmail_(r.docente.email, 'Avaliação validada pelo avaliador — ' + r.id,
-      '<p>O seu processo foi validado pelo avaliador e enviado à Direcção para decisão final.</p><p>' +
+    enviarEmail_(r.docente.email, 'Avaliação validada pelos avaliadores — ' + r.id,
+      '<p>O seu processo foi validado por todos os avaliadores e enviado à Direcção para decisão final.</p><p>' +
       botao_(link_('ver', r), 'Acompanhar o processo') + '</p>');
-    return { ok: true };
+    return { ok: true, faltam: [] };
   });
+}
+
+/** Junta as validações dos avaliadores: pontuação = média; estado = comum a todos ou "Parcialmente validada". */
+function combinarValidacoes_(r) {
+  const out = {};
+  const varios = r.avaliadores.length > 1;
+  listaCriterios_(r.quadro).forEach(c => {
+    const vs = r.avaliadores.map(a => a.validacao[c.key]);
+    const media = Math.round(vs.reduce((s, x) => s + x.pont, 0) / vs.length * 100) / 100;
+    const estados = vs.map(x => x.estado);
+    const estado = estados.every(e => e === estados[0]) ? estados[0] : 'Parcialmente validada';
+    const coment = r.avaliadores.map((a, i) => vs[i].coment ? (varios ? a.nome + ': ' : '') + vs[i].coment : '')
+      .filter(Boolean).join(' | ');
+    out[c.key] = { estado, pont: media, coment };
+  });
+  r.validacao = out;
+  r.totalValidado = soma_(Object.keys(out).map(k => out[k].pont));
 }
 
 // ---------------------------------------------------------------------------
@@ -391,20 +450,19 @@ function dirSubmeter(id, t, x) {
     const r = obterRegisto_(id);
     exigirToken_(r, 'd', t);
     if (r.estado !== ESTADOS.DIRECCAO) throw new Error('Este processo já não está na fase de decisão.');
-    const decisoes = ['Homologada', 'Homologada com alteração da pontuação', 'Devolvida ao avaliador'];
+    const decisoes = ['Homologada', 'Homologada com alteração da pontuação', 'Devolvida aos avaliadores'];
     if (!x || decisoes.indexOf(x.decisao) < 0) throw new Error('Escolha a decisão.');
     if (!String(x.nome || '').trim() || !x.declaracao || !x.png)
       throw new Error('Escreva o seu nome, assine no quadro e confirme a declaração.');
 
-    if (x.decisao === 'Devolvida ao avaliador') {
+    if (x.decisao === 'Devolvida aos avaliadores') {
       if (!String(x.despacho || '').trim()) throw new Error('Indique no despacho o motivo da devolução.');
       r.estado = ESTADOS.AVALIADOR;
-      r.tokens.a = token_();                                // novo link para o avaliador
-      r.historico.push({ data: agora_(), evento: 'Devolvido ao avaliador pela Direcção (' + x.nome.trim() + '): ' + x.despacho.trim() });
+      r.avaliadores.forEach(a => { a.estado = 'pendente'; a.token = token_(); });   // novos links
+      r.historico.push({ data: agora_(), evento: 'Devolvido aos avaliadores pela Direcção (' + x.nome.trim() + '): ' + x.despacho.trim() });
       guardarRegisto_(r);
-      enviarEmail_(r.avaliador.email, 'Processo devolvido pela Direcção — ' + r.docente.nome,
-        '<p>A Direcção devolveu o processo de <b>' + esc_(r.docente.nome) + '</b> para revisão.</p>' +
-        '<p><b>Despacho:</b> ' + esc_(x.despacho) + '</p><p>' + botao_(link_('avaliador', r), 'Rever a validação') + '</p>');
+      const nota = '<p><b>A Direcção devolveu este processo para revisão.</b> Despacho: ' + esc_(x.despacho) + '</p>';
+      r.avaliadores.forEach(a => emailAvaliador_(r, a, nota));
       return { ok: true, devolvido: true };
     }
 
@@ -430,7 +488,7 @@ function dirSubmeter(id, t, x) {
       '<p>O documento final segue em anexo.</p>';
     const anexo = DriveApp.getFileById(r.pdf.id).getBlob();
     enviarEmail_(r.docente.email, 'Documento final da avaliação de desempenho — ' + r.id, corpo, [anexo]);
-    enviarEmail_([r.avaliador.email].concat(config_().direccao.map(d => d.email)).join(','),
+    enviarEmail_(r.avaliadores.map(a => a.email).concat(config_().direccao.map(d => d.email)).join(','),
       'Avaliação concluída — ' + r.docente.nome, corpo + '<p><a href="' + r.pdf.url + '">Abrir o documento no Drive</a></p>', [anexo]);
     return { ok: true, pdf: r.pdf.url };
   });
@@ -455,18 +513,22 @@ function gerarDocumentoFinal_(r) {
   b.appendParagraph('Processo n.º ' + r.id + ' · Estado: ' + r.estado + ' · ' + QUADROS[r.quadro].nome)
     .setAlignment(DocumentApp.HorizontalAlignment.CENTER).setItalic(true);
 
+  const porTipo = t => r.docente.unidades.filter(u => u.tipo === t).map(u => u.nome).join('; ') || '—';
   b.appendParagraph('1. Dados do professor avaliado').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   tabela_(b, [
     ['Nome', r.docente.nome], ['Email', r.docente.email], ['Unidade Básica/Extensão', r.docente.unidade],
-    ['Cursos', (r.docente.cursos || []).join('; ') || '—'], ['Programas', (r.docente.programas || []).join('; ') || '—'],
-    ['Categoria Profissional', r.docente.categoria],
-    ['Período de Avaliação', r.docente.periodo], ['Função', QUADROS[r.quadro].funcao], ['Avaliador', r.avaliador.nome],
+    ['Cursos', porTipo('Curso')], ['Programas', porTipo('Programa')], ['Ano Propedêutico', porTipo('Ano Propedêutico')],
+    ['Categoria Profissional', r.docente.categoria], ['Período de Avaliação', r.docente.periodo],
+    ['Função', QUADROS[r.quadro].funcao],
+    ['Avaliadores', r.avaliadores.map(a => a.nome + ' (' + a.unidades.join(', ') + ')').join('; ')],
   ], false, [150, null]);
 
   b.appendParagraph('2. Critérios de verificação, evidências e validação').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  if (r.avaliadores.length > 1)
+    b.appendParagraph('Pontuação validada = média das pontuações atribuídas pelos ' + r.avaliadores.length + ' avaliadores.').setItalic(true);
   QUADROS[r.quadro].padroes.forEach(p => {
-    b.appendParagraph(p.nome + ' (máx. ' + p.max + ' pontos)').setHeading(DocumentApp.ParagraphHeading.HEADING3);
-    const linhas = [['N.º', 'Critério de verificação', 'Máx.', 'Auto', 'Evidências', 'Validação', 'Pont. validada', 'Comentário do avaliador']];
+    b.appendParagraph(p.nome + ' (máx. ' + p.max + ' pontos)').setHeading(DocumentApp.ParagraphHeading.HEADING3).setItalic(false);
+    const linhas = [['N.º', 'Critério de verificação', 'Máx.', 'Auto', 'Evidências', 'Validação', 'Pont. validada', 'Comentários dos avaliadores']];
     const links = [];
     let sA = 0, sV = 0;
     p.criterios.forEach(([texto, max], i) => {
@@ -495,20 +557,22 @@ function gerarDocumentoFinal_(r) {
   });
 
   b.appendParagraph('3. Resumo da pontuação').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  tabela_(b, [
-    ['', 'Pontos'],
-    ['Auto-avaliação do docente', fmt_(r.totalAuto) + ' / 100'],
-    ['Pontuação validada pelo avaliador', fmt_(r.totalValidado) + ' / 100'],
-    ['Pontuação final homologada pela Direcção', fmt_(r.direccao.pontFinal) + ' / 100'],
-  ], true, [260, null]);
+  const resumo = [['', 'Pontos'], ['Auto-avaliação do docente', fmt_(r.totalAuto) + ' / 100']];
+  r.avaliadores.forEach(a => resumo.push(['Validada por ' + a.nome + ' (' + a.unidades.join(', ') + ')', fmt_(a.total) + ' / 100']));
+  if (r.avaliadores.length > 1) resumo.push(['Pontuação validada (média dos avaliadores)', fmt_(r.totalValidado) + ' / 100']);
+  resumo.push(['Pontuação final homologada pela Direcção', fmt_(r.direccao.pontFinal) + ' / 100']);
+  tabela_(b, resumo, true, [300, null]);
 
   b.appendParagraph('4. Declaração do docente').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   b.appendParagraph('Declaro que as informações e evidências apresentadas são verdadeiras e referem-se ao período de avaliação.');
   blocoAssinatura_(b, r.assinDocente, 'Docente');
 
-  b.appendParagraph('5. Parecer e assinatura do avaliador').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  b.appendParagraph(r.parecer || '(sem parecer escrito)');
-  blocoAssinatura_(b, r.assinAvaliador, 'Avaliador');
+  b.appendParagraph('5. Pareceres e assinaturas dos avaliadores').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  r.avaliadores.forEach(a => {
+    b.appendParagraph(a.nome + ' — coordenador(a) de ' + a.unidades.join(', ')).setHeading(DocumentApp.ParagraphHeading.HEADING3);
+    b.appendParagraph(a.parecer || '(sem parecer escrito)');
+    blocoAssinatura_(b, a.assin, 'Avaliador');
+  });
 
   b.appendParagraph('6. Decisão final da Direcção').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   b.appendParagraph('Decisão: ' + r.direccao.decisao).setBold(true);
@@ -558,10 +622,15 @@ function blocoAssinatura_(b, a, papel) {
 // ---------------------------------------------------------------------------
 function config_() {
   const sh = SpreadsheetApp.openById(prop_('REGISTO')).getSheetByName('Configuração');
-  const vals = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues() : [];
-  const pessoas = vals.filter(v => v[0] && v[2]).map(v => ({ papel: String(v[0]).trim(), nome: String(v[1]).trim(), email: String(v[2]).trim() }));
-  return { avaliadores: pessoas.filter(p => p.papel === 'Avaliador'), direccao: pessoas.filter(p => p.papel === 'Direcção') };
+  const vals = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues() : [];
+  const linhas = vals.map(v => ({ tipo: String(v[0]).trim(), nome: String(v[1]).trim(), coord: String(v[2]).trim(), email: String(v[3]).trim() }));
+  return {
+    unidades: linhas.filter(l => TIPOS_UNIDADE.indexOf(l.tipo) >= 0 && l.nome),
+    direccao: linhas.filter(l => l.tipo === 'Direcção' && l.email).map(l => ({ nome: l.coord, email: l.email })),
+  };
 }
+
+function nomesAvaliadores_(r) { return r.avaliadores.map(a => a.nome).join(', '); }
 
 function folhaRegisto_() { return SpreadsheetApp.openById(prop_('REGISTO')).getSheetByName('Registo'); }
 
@@ -578,8 +647,10 @@ function obterRegisto_(id) {
 
 function guardarRegisto_(r) {
   const sh = folhaRegisto_();
+  const feitos = r.avaliadores.filter(a => a.estado === 'concluida').length;
+  const estado = r.estado === ESTADOS.AVALIADOR ? r.estado + ' (' + feitos + ' de ' + r.avaliadores.length + ')' : r.estado;
   const linha = [r.id, r.submetidoEm || '', r.docente.nome, r.docente.email, r.docente.unidade, r.docente.departamento,
-    r.quadro === 'Q1' ? 'Quadro 1 (com coordenação)' : 'Quadro 2 (sem gestão)', r.avaliador.nome, r.estado,
+    r.quadro === 'Q1' ? 'Quadro 1 (com coordenação)' : 'Quadro 2 (sem gestão)', nomesAvaliadores_(r), estado,
     r.totalAuto, r.totalValidado === undefined ? '' : r.totalValidado, r.direccao ? r.direccao.pontFinal : '',
     r.direccao ? r.direccao.decisao : '', r.pasta.url, r.pdf ? r.pdf.url : '', JSON.stringify(r)];
   const n = sh.getLastRow() - 1;
@@ -612,9 +683,9 @@ function exigirToken_(r, papel, t) {
   if (!r || !t || r.tokens[papel] !== t) throw new Error('Link inválido ou expirado. Use o link mais recente recebido por email.');
 }
 
-function link_(modo, r) {
-  const k = { avaliador: 'a', direccao: 'd', ver: 'v' }[modo];
-  return ScriptApp.getService().getUrl() + '?modo=' + modo + '&id=' + encodeURIComponent(r.id) + '&t=' + r.tokens[k];
+function link_(modo, r, token) {
+  const t = token || r.tokens[{ direccao: 'd', ver: 'v' }[modo]];
+  return ScriptApp.getService().getUrl() + '?modo=' + modo + '&id=' + encodeURIComponent(r.id) + '&t=' + t;
 }
 
 function enviarEmail_(para, assunto, html, anexos) {
