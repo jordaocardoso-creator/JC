@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<base target="_blank">
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#f3f5f4; --surface:#fff; --ink:#15231f; --muted:#5b6b66; --line:#d9e0dd;
+  --accent:#0f5c4d; --accent-soft:#e1efeb; --ochre:#b8741a; --ochre-soft:#f6ead8; --warn:#b4372b; --warn-soft:#fbe9e7;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif; --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--f-body);padding:24px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.2;text-wrap:balance}
+h1{font-size:clamp(1.5rem,3.4vw,2.2rem)} h2{font-size:1.2rem} h3{font-size:1rem}
+.eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ochre);font-weight:600}
+header.top{display:grid;gap:8px;border-bottom:2px solid var(--ink);padding-bottom:16px}
+header.top p{margin:0;color:var(--muted);max-width:70ch}
+.steps{display:flex;gap:6px;flex-wrap:wrap;font-size:.85rem}
+.steps span{padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.steps span.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.steps span.done{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;display:grid;gap:14px;min-width:0}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-size:.8rem;color:var(--accent);background:var(--accent-soft);padding:3px 9px;border-radius:99px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+label.f{display:block;font-weight:600;font-size:.92rem}
+label.f>input,label.f>select,label.f>textarea{display:block;margin-top:4px}
+.req{color:var(--warn)}
+.hint{font-weight:400;color:var(--muted);font-size:.84rem}
+input[type=text],input[type=email],input[type=url],select,textarea{font:inherit;font-weight:400;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%}
+textarea{min-height:64px;resize:vertical}
+input.num{width:7rem;text-align:right;font-variant-numeric:tabular-nums}
+input.bad,select.bad,textarea.bad{border-color:var(--warn);background:var(--warn-soft)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.choices{display:grid;gap:10px}
+.choice{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;background:var(--bg)}
+.choice.on{border-color:var(--accent);background:var(--accent-soft)}
+.choice input{margin-top:4px;accent-color:var(--accent)}
+.choice small{display:block;color:var(--muted)}
+.crit{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px}
+.crit:first-of-type{border-top:0;padding-top:0}
+.crit-top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.crit-top .t b{font-family:var(--f-display)}
+.crit-top .t small{display:block;color:var(--muted)}
+.ev{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:12px;display:grid;gap:10px}
+.ev .grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.files{font-size:.85rem;color:var(--muted);display:grid;gap:2px}
+.box{background:var(--bg);border-radius:8px;padding:10px 12px;display:grid;gap:6px;font-size:.92rem}
+.box a{color:var(--accent);word-break:break-all}
+.subtotal{display:flex;justify-content:space-between;font-weight:600;border-top:2px solid var(--ink);padding-top:10px;font-variant-numeric:tabular-nums}
+.total{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+.total .big{font-family:var(--f-display);font-size:2.4rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.sig{display:grid;gap:8px}
+.sig canvas{width:100%;max-width:500px;aspect-ratio:10/3;height:auto;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;cursor:crosshair}
+.sig img{max-width:240px;background:#fff;border:1px solid var(--line);border-radius:6px}
+button{font:inherit;font-weight:600;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.5;cursor:wait}
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.msg{padding:12px 14px;border-radius:8px;font-weight:600}
+.msg.err{background:var(--warn-soft);color:var(--warn)}
+.msg.ok{background:var(--accent-soft);color:var(--accent)}
+.msg.info{background:var(--ochre-soft);color:var(--ink);font-weight:400}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--accent-soft)} td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.8rem;font-weight:600}
+.pill.v{background:var(--accent-soft);color:var(--accent)} .pill.p{background:var(--ochre-soft);color:var(--ochre)} .pill.x{background:var(--warn-soft);color:var(--warn)}
+ol.hist{margin:0;padding-left:1.2rem;display:grid;gap:4px}
+@media (max-width:560px){.crit-top{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+const CTX = <?!= ctx ?>;
+const S = CTX.sistema;
+const app = document.getElementById('app');
+const fmt = n => Number(n || 0).toFixed(2).replace('.', ',');
+const num = s => { const v = parseFloat(String(s ?? '').trim().replace(',', '.')); return isNaN(v) ? null : v; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = (sel, el = document) => el.querySelector(sel);
+const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
+const call = (fn, ...args) => new Promise((res, rej) =>
+  google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e && e.message ? e : new Error(String(e))))[fn](...args));
+
+function cabecalho(etapa, subtitulo) {
+  const nomes = ['1. Docente', '2. Avaliador', '3. Direcção', 'Documento final'];
+  return `<header class="top">
+    <div class="eyebrow">${esc(S.instituicao)} · Apêndice 3</div>
+    <h1>${esc(S.titulo)}</h1>
+    <p>${subtitulo}</p>
+    <div class="steps">${nomes.map((n, i) => `<span class="${i === etapa ? 'on' : i < etapa ? 'done' : ''}">${n}</span>`).join('')}</div>
+  </header>`;
+}
+
+function msg(el, tipo, texto) { el.innerHTML = texto ? `<div class="msg ${tipo}">${texto}</div>` : ''; }
+
+/* ---------- Assinatura desenhada ---------- */
+function padAssinatura(canvas) {
+  const ctx = canvas.getContext('2d'); let des = false, vazio = true, last = null;
+  const W = canvas.width = 1000, H = canvas.height = 300;
+  const limpar = () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); vazio = true; };
+  limpar();
+  ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#13233f';
+  const pos = e => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+  canvas.addEventListener('pointerdown', e => { des = true; last = pos(e); canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e => { if (!des) return; const p = pos(e);
+    ctx.beginPath(); ctx.moveTo(...last); ctx.lineTo(...p); ctx.stroke(); last = p; vazio = false; });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => canvas.addEventListener(t, () => des = false));
+  return { limpar, vazio: () => vazio, png: () => canvas.toDataURL('image/png') };
+}
+function blocoAssinatura(id, rotulo, nomeInicial = '', comCargo = false, declaracao = '') {
+  return `<div class="sig" id="${id}">
+    <div class="grid">
+      <label class="f">Nome completo de quem assina <span class="req">*</span><input type="text" id="${id}-nome" value="${esc(nomeInicial)}"></label>
+      ${comCargo ? `<label class="f">Cargo/Função<input type="text" id="${id}-cargo"></label>` : ''}
+    </div>
+    <label class="f">${rotulo} <span class="req">*</span><span class="hint">Assine com o rato, o dedo ou uma caneta digital.</span></label>
+    <canvas id="${id}-canvas" aria-label="Área de assinatura"></canvas>
+    <div class="btns"><button type="button" id="${id}-limpar">Limpar assinatura</button></div>
+    <label class="choice"><input type="checkbox" id="${id}-decl"><span>${declaracao}</span></label>
+  </div>`;
+}
+function ligarAssinatura(id) {
+  const pad = padAssinatura($('#' + id + '-canvas'));
+  $('#' + id + '-limpar').onclick = pad.limpar;
+  return pad;
+}
+
+/* ---------- Leitura de ficheiro ---------- */
+const lerBase64 = f => new Promise((res, rej) => { const r = new FileReader();
+  r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(new Error('Não foi possível ler ' + f.name)); r.readAsDataURL(f); });
+
+/* ============================================================
+   ETAPA 1 — DOCENTE
+   ============================================================ */
+function paginaDocente() {
+  const Q = CTX.quadros;
+  app.innerHTML = cabecalho(0, 'Preencha os seus dados, escolha a função que exerce e indique a auto-avaliação em cada critério com as respectivas evidências (links e ficheiros PDF). No fim, assine e submeta ao seu avaliador.') + `
+  <section class="card">
+    <div class="head"><h2>Dados do docente</h2><span class="tag">Passo 1</span></div>
+    <div class="grid">
+      <label class="f">Nome completo <span class="req">*</span><input type="text" id="nome"></label>
+      <label class="f">Email <span class="req">*</span><input type="email" id="email" placeholder="para receber o documento final"></label>
+      <label class="f">Unidade Básica/Extensão <span class="req">*</span><input type="text" id="unidade"></label>
+      <label class="f">Departamento <span class="req">*</span><input type="text" id="departamento"></label>
+      <label class="f">Categoria Profissional <span class="req">*</span>
+        <select id="categoria"><option value="">Seleccione…</option><option>Professor Catedrático</option><option>Professor Associado</option><option>Professor Auxiliar</option><option>Assistente</option><option>Assistente Estagiário</option><option>Outra</option></select></label>
+      <label class="f">Período de Avaliação <span class="req">*</span><input type="text" id="periodo" placeholder="Ex.: Janeiro a Dezembro de 2026"></label>
+      <label class="f">Avaliador <span class="req">*</span>
+        <select id="avaliador"><option value="">Seleccione…</option>${CTX.avaliadores.map(a => `<option value="${esc(a.email)}">${esc(a.nome)}</option>`).join('')}</select></label>
+    </div>
+  </section>
+  <section class="card">
+    <div class="head"><h2>Função que exerce</h2><span class="tag">Passo 2 · define o quadro a preencher</span></div>
+    <div class="choices">
+      ${Object.values(Q).map(q => `<label class="choice" data-q="${q.codigo}"><input type="radio" name="quadro" value="${q.codigo}">
+        <span><b>${esc(q.nome)}</b><small>${esc(q.funcao)} · ${q.padroes.map(p => `${p.nome.split(' —')[0]} ${p.max}`).join(' + ')} pontos</small></span></label>`).join('')}
+    </div>
+  </section>
+  <div id="quadro"></div>
+  <section class="card" id="final" hidden>
+    <div class="head"><h2>Resumo e submissão</h2><span class="tag">Passo 4</span></div>
+    <div class="total"><span>Auto-avaliação total</span><span class="big" id="tot">0,00</span><span>/ 100</span></div>
+    ${blocoAssinatura('sd', 'Assinatura do docente', '', false, 'Declaro que as informações e evidências apresentadas são verdadeiras e referem-se ao período de avaliação.')}
+    <div class="btns"><button class="primary" id="submeter">Assinar e submeter ao avaliador</button></div>
+    <div id="estado" role="status"></div>
+  </section>`;
+
+  let pad = null;
+  $$('input[name=quadro]').forEach(r => r.onchange = () => {
+    $$('.choice[data-q]').forEach(c => c.classList.toggle('on', c.dataset.q === r.value));
+    desenharQuadro(Q[r.value]);
+    $('#final').hidden = false;
+    if (!pad) pad = ligarAssinatura('sd');
+  });
+  $('#submeter').onclick = () => submeterDocente(pad);
+}
+
+function desenharQuadro(q) {
+  $('#quadro').innerHTML = q.padroes.map(p => `
+    <section class="card" style="margin-top:20px">
+      <div class="head"><h2>${esc(p.nome)}</h2><span class="tag">Passo 3 · máx. ${p.max} pontos</span></div>
+      <div class="msg info">Em cada critério, indique a pontuação que considera ter obtido (0 se não realizou a actividade) e junte as evidências: descrição, link electrónico (Moodle, revista, repositório, Drive) e/ou ficheiros PDF, JPG ou PNG até ${S.maxMb} MB cada.</div>
+      ${p.criterios.map(c => `
+        <div class="crit" data-key="${c.key}" data-max="${c.max}" data-p="${p.k}">
+          <div class="crit-top">
+            <div class="t"><b>${c.n}.</b> ${esc(c.texto)}<small>Pontuação básica máxima: ${fmt(c.max)}</small></div>
+            <label class="f">Auto-avaliação <input class="num auto" inputmode="decimal" placeholder="0,00" aria-label="Auto-avaliação"></label>
+          </div>
+          <div class="ev">
+            <div class="grid">
+              <label class="f">Descrição da evidência <span class="hint">(opcional)</span><textarea class="desc" placeholder="Ex.: 3 turmas de Gestão Financeira, 1.º semestre"></textarea></label>
+              <div style="display:grid;gap:10px">
+                <label class="f">Link da evidência electrónica <span class="hint">(opcional)</span><input type="url" class="link" placeholder="https://"></label>
+                <label class="f">Anexar documentos (PDF/JPG/PNG) <span class="hint">(opcional, vários)</span><input type="file" class="anexos" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></label>
+                <div class="files"></div>
+              </div>
+            </div>
+          </div>
+        </div>`).join('')}
+      <div class="subtotal"><span>Subtotal ${esc(p.nome)}</span><span data-sub="${p.k}">0,00 / ${fmt(p.max)}</span></div>
+    </section>`).join('');
+  $$('.auto').forEach(i => i.oninput = totaisDocente);
+  $$('.anexos').forEach(i => i.onchange = () => {
+    const box = i.closest('.crit').querySelector('.files');
+    box.innerHTML = [...i.files].map(f => {
+      const okTipo = S.tipos.includes(f.type), okTam = f.size <= S.maxMb * 1048576;
+      return `<span style="color:${okTipo && okTam ? 'inherit' : 'var(--warn)'}">📎 ${esc(f.name)} (${(f.size / 1048576).toFixed(1)} MB)${okTipo ? '' : ' — formato não permitido'}${okTam ? '' : ' — demasiado grande'}</span>`;
+    }).join('');
+  });
+  totaisDocente();
+}
+
+function totaisDocente() {
+  const sub = {}; let tot = 0;
+  $$('.crit').forEach(c => {
+    const i = $('.auto', c), v = num(i.value), max = +c.dataset.max;
+    const ok = i.value.trim() === '' || (v !== null && v >= 0 && v <= max + 1e-9);
+    i.classList.toggle('bad', !ok);
+    if (ok && v !== null) { sub[c.dataset.p] = (sub[c.dataset.p] || 0) + v; tot += v; }
+  });
+  $$('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + s.textContent.split('/ ')[1]);
+  $('#tot').textContent = fmt(tot);
+}
+
+async function submeterDocente(pad) {
+  const st = $('#estado'), btn = $('#submeter');
+  const val = id => $('#' + id).value.trim();
+  const dados = { nome: val('nome'), email: val('email'), unidade: val('unidade'), departamento: val('departamento'),
+    categoria: val('categoria'), periodo: val('periodo'), avaliador: val('avaliador'),
+    quadro: ($('input[name=quadro]:checked') || {}).value, itens: {} };
+  const faltam = ['nome', 'email', 'unidade', 'departamento', 'categoria', 'periodo', 'avaliador'].filter(k => !dados[k]);
+  faltam.forEach(k => $('#' + k).classList.add('bad'));
+  if (faltam.length) return msg(st, 'err', 'Preencha todos os dados do docente (campos assinalados).');
+  const ficheiros = []; let erro = '';
+  $$('.crit').forEach(c => {
+    const v = num($('.auto', c).value), max = +c.dataset.max, link = $('.link', c).value.trim();
+    if (v === null || v < 0 || v > max + 1e-9) { $('.auto', c).classList.add('bad'); erro = erro || 'Indique a auto-avaliação em todos os critérios (0 a ' + fmt(max) + '). Use 0 quando não realizou a actividade.'; }
+    if (link && !/^https?:\/\/\S+$/i.test(link)) { $('.link', c).classList.add('bad'); erro = erro || 'Há um link inválido. Use um endereço começado por https://'; }
+    [...$('.anexos', c).files].forEach(f => {
+      if (!S.tipos.includes(f.type)) erro = erro || `"${f.name}" não é PDF, JPG ou PNG.`;
+      if (f.size > S.maxMb * 1048576) erro = erro || `"${f.name}" excede ${S.maxMb} MB.`;
+      ficheiros.push({ key: c.dataset.key, f });
+    });
+    dados.itens[c.dataset.key] = { auto: v, desc: $('.desc', c).value, link };
+  });
+  if (erro) return msg(st, 'err', erro);
+  if (!$('#sd-nome').value.trim() || pad.vazio() || !$('#sd-decl').checked)
+    return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
+
+  btn.disabled = true;
+  try {
+    msg(st, 'info', 'A criar o processo…');
+    const { id, up } = await call('docIniciar', dados);
+    for (let i = 0; i < ficheiros.length; i++) {
+      const { key, f } = ficheiros[i];
+      msg(st, 'info', `A carregar evidências (${i + 1} de ${ficheiros.length}): ${esc(f.name)}…`);
+      await call('docCarregar', id, up, key, f.name, f.type, await lerBase64(f));
+    }
+    msg(st, 'info', 'A assinar e a enviar ao avaliador…');
+    const r = await call('docFinalizar', id, up, { nome: $('#sd-nome').value, declaracao: true, png: pad.png() });
+    app.innerHTML = cabecalho(1, '') + `<section class="card"><h2>Submetido com sucesso</h2>
+      <div class="msg ok">O processo n.º ${esc(r.id)} foi enviado ao avaliador. Recebeu uma confirmação por email.</div>
+      <p>Pode acompanhar o estado do processo neste link (também enviado por email):<br><a href="${esc(r.acompanhar)}">${esc(r.acompanhar)}</a></p></section>`;
+  } catch (e) {
+    msg(st, 'err', 'Não foi possível submeter: ' + esc(e.message));
+    btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   Componentes comuns (avaliador / direcção)
+   ============================================================ */
+function dadosDocente(r) {
+  const d = r.docente;
+  return `<section class="card"><div class="head"><h2>${esc(d.nome)}</h2><span class="tag">Processo ${esc(r.id)}</span></div>
+    <div class="grid" style="font-size:.95rem">
+      <div><span class="hint">Unidade</span><br>${esc(d.unidade)}</div><div><span class="hint">Departamento</span><br>${esc(d.departamento)}</div>
+      <div><span class="hint">Categoria</span><br>${esc(d.categoria)}</div><div><span class="hint">Período</span><br>${esc(d.periodo)}</div>
+      <div><span class="hint">Função / Quadro</span><br>${esc(CTX.quadros[r.quadro].nome)}</div><div><span class="hint">Avaliador</span><br>${esc(r.avaliador.nome)}</div>
+    </div>
+    <div class="btns"><a href="${esc(r.pasta.url)}">Abrir a pasta de evidências no Google Drive</a></div></section>`;
+}
+function evidencias(it) {
+  const partes = [];
+  if (it.desc) partes.push(`<div>${esc(it.desc)}</div>`);
+  if (it.link) partes.push(`<div>🔗 <a href="${esc(it.link)}">${esc(it.link)}</a></div>`);
+  it.anexos.forEach(a => partes.push(`<div>📎 <a href="${esc(a.url)}">${esc(a.nome)}</a></div>`));
+  return partes.length ? `<div class="box">${partes.join('')}</div>` : '<div class="box hint">Sem evidências apresentadas.</div>';
+}
+const pill = e => `<span class="pill ${e === 'Validada' ? 'v' : e === 'Não validada' ? 'x' : 'p'}">${esc(e)}</span>`;
+function assinaturaVista(img, a, papel) {
+  if (!a) return '';
+  return `<div class="sig">${img ? `<img src="${img}" alt="Assinatura de ${esc(a.nome)}">` : ''}
+    <div><b>${esc(a.nome)}</b>${a.cargo ? ' — ' + esc(a.cargo) : ''} (${papel})<br><span class="hint">Assinado em ${esc(a.data)}</span></div></div>`;
+}
+
+/* ============================================================
+   ETAPA 2 — AVALIADOR
+   ============================================================ */
+function paginaAvaliador() {
+  const r = CTX.registo, q = CTX.quadros[r.quadro];
+  if (CTX.concluido) {
+    app.innerHTML = cabecalho(2, '') + `<section class="card"><div class="msg ok">Este processo já foi validado e está agora em: <b>${esc(r.estado)}</b>.</div></section>`;
+    return;
+  }
+  const ant = r.validacao || {};
+  app.innerHTML = cabecalho(1, 'Verifique as evidências de cada critério, confirme ou ajuste a pontuação, escreva os seus comentários e assine. A avaliação seguirá para a Direcção.') +
+    dadosDocente(r) +
+    (r.historico.some(h => /Devolvido/.test(h.evento)) ? `<div class="msg info"><b>Processo devolvido pela Direcção.</b> ${esc(r.historico.filter(h => /Devolvido/.test(h.evento)).pop().evento)}</div>` : '') +
+    q.padroes.map(p => `<section class="card">
+      <div class="head"><h2>${esc(p.nome)}</h2><span class="tag">máx. ${p.max} pontos</span></div>
+      ${p.criterios.map(c => { const it = r.itens[c.key], v = ant[c.key] || {}; return `
+        <div class="crit" data-key="${c.key}" data-max="${c.max}" data-p="${p.k}" data-auto="${it.auto}">
+          <div class="crit-top"><div class="t"><b>${c.n}.</b> ${esc(c.texto)}<small>Máx. ${fmt(c.max)} · Auto-avaliação do docente: <b>${fmt(it.auto)}</b></small></div></div>
+          ${evidencias(it)}
+          <div class="grid">
+            <label class="f">Validação da evidência <span class="req">*</span>
+              <select class="estado"><option value="">Seleccione…</option>
+                ${['Validada', 'Parcialmente validada', 'Não validada'].map(o => `<option ${v.estado === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+            <label class="f">Pontuação validada <span class="req">*</span><input class="num pont" inputmode="decimal" value="${v.pont !== undefined ? fmt(v.pont) : ''}"></label>
+            <label class="f">Comentário do avaliador<textarea class="coment">${esc(v.coment || '')}</textarea></label>
+          </div>
+        </div>`; }).join('')}
+      <div class="subtotal"><span>Subtotal validado ${esc(p.nome)}</span><span data-sub="${p.k}" data-max="${p.max}">0,00 / ${fmt(p.max)}</span></div>
+    </section>`).join('') + `
+    <section class="card">
+      <div class="head"><h2>Parecer e assinatura do avaliador</h2></div>
+      <div class="total"><span>Auto-avaliação: <b>${fmt(r.totalAuto)}</b></span><span>Pontuação validada</span><span class="big" id="tot">0,00</span><span>/ 100</span></div>
+      <label class="f">Parecer geral do avaliador<textarea id="parecer" style="min-height:100px">${esc(r.parecer || '')}</textarea></label>
+      ${blocoAssinatura('sa', 'Assinatura do avaliador', r.avaliador.nome, true, 'Declaro que verifiquei as evidências apresentadas e que a pontuação validada corresponde ao desempenho comprovado.')}
+      <div class="btns"><button class="primary" id="submeter">Assinar e submeter à Direcção</button></div>
+      <div id="estado" role="status"></div>
+    </section>`;
+  const pad = ligarAssinatura('sa');
+  $$('.crit').forEach(c => {
+    const sel = $('.estado', c), p = $('.pont', c);
+    sel.onchange = () => {
+      if (sel.value === 'Validada') p.value = fmt(c.dataset.auto);
+      if (sel.value === 'Não validada') p.value = '0,00';
+      p.readOnly = sel.value === 'Não validada';
+      totaisAvaliador();
+    };
+    p.oninput = totaisAvaliador;
+  });
+  totaisAvaliador();
+  $('#submeter').onclick = async () => {
+    const st = $('#estado'), btn = $('#submeter'), itens = {}; let erro = '';
+    $$('.crit').forEach(c => {
+      const e = $('.estado', c).value, v = num($('.pont', c).value), max = +c.dataset.max;
+      if (!e) { $('.estado', c).classList.add('bad'); erro = erro || 'Indique a validação de todas as evidências.'; }
+      if (v === null || v < 0 || v > max + 1e-9) { $('.pont', c).classList.add('bad'); erro = erro || 'Há pontuações validadas em falta ou fora do intervalo.'; }
+      itens[c.dataset.key] = { estado: e, pont: v, coment: $('.coment', c).value };
+    });
+    if (erro) return msg(st, 'err', erro);
+    if (!$('#sa-nome').value.trim() || pad.vazio() || !$('#sa-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
+    btn.disabled = true; msg(st, 'info', 'A guardar a validação e a enviar à Direcção…');
+    try {
+      await call('avaSubmeter', r.id, CTX.t, { itens, parecer: $('#parecer').value,
+        nome: $('#sa-nome').value, cargo: $('#sa-cargo').value, declaracao: true, png: pad.png() });
+      app.innerHTML = cabecalho(2, '') + `<section class="card"><div class="msg ok">Validação assinada e submetida à Direcção. Obrigado.</div></section>`;
+    } catch (e) { msg(st, 'err', 'Não foi possível submeter: ' + esc(e.message)); btn.disabled = false; }
+  };
+}
+function totaisAvaliador() {
+  const sub = {}; let tot = 0;
+  $$('.crit').forEach(c => { const v = num($('.pont', c).value), max = +c.dataset.max;
+    const ok = $('.pont', c).value.trim() === '' || (v !== null && v >= 0 && v <= max + 1e-9);
+    $('.pont', c).classList.toggle('bad', !ok);
+    if (ok && v !== null) { sub[c.dataset.p] = (sub[c.dataset.p] || 0) + v; tot += v; } });
+  $$('[data-sub]').forEach(s => s.textContent = fmt(sub[s.dataset.sub] || 0) + ' / ' + fmt(s.dataset.max));
+  $('#tot').textContent = fmt(tot);
+}
+
+/* ============================================================
+   ETAPA 3 — DIRECÇÃO
+   ============================================================ */
+function paginaDireccao() {
+  const r = CTX.registo, q = CTX.quadros[r.quadro], A = CTX.assinaturas || {};
+  if (CTX.concluido) {
+    app.innerHTML = cabecalho(3, '') + `<section class="card"><div class="msg ok">Este processo já foi decidido. Estado: <b>${esc(r.estado)}</b>.</div>
+      ${r.pdf ? `<p><a href="${esc(r.pdf.url)}">Abrir o documento final (PDF)</a></p>` : ''}</section>`;
+    return;
+  }
+  app.innerHTML = cabecalho(2, 'Analise a avaliação validada e assinada pelo avaliador e registe a decisão final. Ao homologar, é gerado automaticamente o documento único do docente em PDF.') +
+    dadosDocente(r) + `
+    <section class="card"><div class="head"><h2>Resultados por critério</h2></div>
+      <div class="scroll"><table>
+        <thead><tr><th>Critério</th><th class="n">Máx.</th><th class="n">Auto</th><th>Evidências</th><th>Validação</th><th class="n">Validado</th><th>Comentário</th></tr></thead>
+        <tbody>${q.padroes.map(p => `<tr><th colspan="7">${esc(p.nome)} (máx. ${p.max})</th></tr>` +
+          p.criterios.map(c => { const it = r.itens[c.key], v = r.validacao[c.key]; return `<tr>
+            <td>${c.n}. ${esc(c.texto)}</td><td class="n">${fmt(c.max)}</td><td class="n">${fmt(it.auto)}</td>
+            <td>${it.link ? `<a href="${esc(it.link)}">Link</a> ` : ''}${it.anexos.map(a => `<a href="${esc(a.url)}">📎 ${esc(a.nome)}</a>`).join('<br>')}${!it.link && !it.anexos.length ? '—' : ''}</td>
+            <td>${pill(v.estado)}</td><td class="n"><b>${fmt(v.pont)}</b></td><td>${esc(v.coment)}</td></tr>`; }).join('')).join('')}
+        </tbody></table></div>
+      <div class="total"><span>Auto-avaliação: <b>${fmt(r.totalAuto)}</b></span><span>Pontuação validada</span><span class="big">${fmt(r.totalValidado)}</span><span>/ 100</span></div>
+    </section>
+    <section class="card"><div class="head"><h2>Parecer do avaliador</h2></div>
+      <p style="margin:0;white-space:pre-wrap">${esc(r.parecer || '(sem parecer escrito)')}</p>
+      ${assinaturaVista(A.avaliador, r.assinAvaliador, 'Avaliador')}
+    </section>
+    <section class="card"><div class="head"><h2>Decisão final da Direcção</h2></div>
+      <div class="choices">
+        ${['Homologada', 'Homologada com alteração da pontuação', 'Devolvida ao avaliador'].map((d, i) =>
+          `<label class="choice"><input type="radio" name="dec" value="${d}" ${i === 0 ? 'checked' : ''}><span><b>${d}</b><small>${
+            ['Confirma a pontuação validada (' + fmt(r.totalValidado) + ').', 'Define outra pontuação final, com justificação no despacho.', 'Devolve ao avaliador para rever a validação, com o motivo no despacho.'][i]}</small></span></label>`).join('')}
+      </div>
+      <div class="grid">
+        <label class="f">Pontuação final (0 a 100)<input class="num" id="pfinal" inputmode="decimal" value="${fmt(r.totalValidado)}" readonly></label>
+      </div>
+      <label class="f">Despacho / observações<textarea id="despacho" style="min-height:90px"></textarea></label>
+      ${blocoAssinatura('sdir', 'Assinatura da Direcção', '', true, 'Confirmo a decisão final registada neste processo.')}
+      <div class="btns"><button class="primary" id="submeter">Assinar e registar decisão</button></div>
+      <div id="estado" role="status"></div>
+    </section>`;
+  const pad = ligarAssinatura('sdir');
+  $$('input[name=dec]').forEach(i => i.onchange = () => {
+    const alt = i.value === 'Homologada com alteração da pontuação';
+    $('#pfinal').readOnly = !alt; if (!alt) $('#pfinal').value = fmt(r.totalValidado);
+    $$('.choice').forEach(c => c.classList.toggle('on', $('input', c) && $('input', c).checked));
+  });
+  $$('.choice').forEach(c => c.classList.toggle('on', !!($('input[name=dec]', c) || {}).checked));
+  $('#submeter').onclick = async () => {
+    const st = $('#estado'), btn = $('#submeter'), dec = $('input[name=dec]:checked').value;
+    if (dec !== 'Homologada' && !$('#despacho').value.trim()) return msg(st, 'err', 'Escreva o despacho com a justificação.');
+    if (!$('#sdir-nome').value.trim() || pad.vazio() || !$('#sdir-decl').checked) return msg(st, 'err', 'Escreva o seu nome, assine no quadro e confirme a declaração.');
+    btn.disabled = true; msg(st, 'info', dec === 'Devolvida ao avaliador' ? 'A devolver ao avaliador…' : 'A registar a decisão e a gerar o documento final em PDF…');
+    try {
+      const res = await call('dirSubmeter', r.id, CTX.t, { decisao: dec, pontFinal: $('#pfinal').value,
+        despacho: $('#despacho').value, nome: $('#sdir-nome').value, cargo: $('#sdir-cargo').value, declaracao: true, png: pad.png() });
+      app.innerHTML = cabecalho(res.devolvido ? 1 : 3, '') + `<section class="card">${res.devolvido
+        ? '<div class="msg ok">Processo devolvido ao avaliador. Ele recebeu um email com o despacho.</div>'
+        : `<div class="msg ok">Decisão registada. O documento final foi gerado e enviado ao docente e ao avaliador.</div><p><a href="${esc(res.pdf)}">Abrir o documento final (PDF)</a></p>`}</section>`;
+    } catch (e) { msg(st, 'err', 'Não foi possível registar: ' + esc(e.message)); btn.disabled = false; }
+  };
+}
+
+/* ============================================================
+   ACOMPANHAMENTO
+   ============================================================ */
+function paginaVer() {
+  const r = CTX.registo, ordem = Object.values(S.estados), etapa = Math.max(0, ordem.indexOf(r.estado));
+  app.innerHTML = cabecalho(etapa, 'Estado do seu processo de avaliação.') + `<section class="card">
+    <div class="head"><h2>${esc(r.docente.nome)}</h2><span class="tag">Processo ${esc(r.id)}</span></div>
+    <div class="msg ${r.estado === S.estados.CONCLUIDA ? 'ok' : 'info'}">Estado actual: <b>${esc(r.estado)}</b></div>
+    ${r.pdf ? `<p>O documento final foi enviado para o seu email. <a href="${esc(r.pdf.url)}">Abrir no Google Drive</a></p>` : ''}
+    <h3>Histórico</h3><ol class="hist">${r.historico.map(h => `<li>${esc(h.data)} — ${esc(h.evento)}</li>`).join('')}</ol></section>`;
+}
+
+/* ---------- Arranque ---------- */
+({ docente: paginaDocente, avaliador: paginaAvaliador, direccao: paginaDireccao, ver: paginaVer }[CTX.modo] ||
+  (() => app.innerHTML = cabecalho(-1, '') + `<section class="card"><div class="msg err">${esc(CTX.mensagem || 'Página não encontrada.')}</div></section>`))();
+</script>
+</body>
+</html>

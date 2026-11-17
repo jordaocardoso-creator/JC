@@ -1,0 +1,68 @@
+# Sistema de Avaliação do Desempenho Docente (docente → avaliador → Direcção)
+
+Este sistema substitui o formulário Google anterior. Funciona como uma página web dentro da sua conta Google, criada com o Google Apps Script, e segue o modelo do **Apêndice 3** (Quadro 1 e Quadro 2).
+
+## Como funciona o circuito
+
+| Etapa | Quem | O que faz |
+|---|---|---|
+| 1 | **Docente** | Abre o link do sistema e preenche os seus dados. Escolhe a função que exerce: o sistema mostra o Quadro 1 (com coordenação) ou o Quadro 2 (sem gestão). Em cada critério indica a auto-avaliação e junta as evidências: descrição, link electrónico e/ou ficheiros PDF, JPG ou PNG (até 10 MB cada). Escolhe o avaliador, assina no ecrã e submete. |
+| 2 | **Avaliador** | Recebe um email com um link pessoal. Abre cada evidência e marca-a como *Validada*, *Parcialmente validada* ou *Não validada*. Confirma ou ajusta a pontuação, escreve comentários e um parecer geral, assina no ecrã e submete à Direcção. |
+| 3 | **Direcção** | Recebe um email com o processo validado e decide: **Homologar**, **Homologar com alteração da pontuação** (com justificação) ou **Devolver ao avaliador** (com despacho). Assina no ecrã. |
+| Fim | Sistema | Gera um **documento único em PDF por docente**. O PDF tem os dados, todos os critérios, as evidências com links, a validação, as pontuações, o parecer, a decisão, as três assinaturas e o histórico. Fica guardado na pasta do docente e é enviado por email ao docente, ao avaliador e à Direcção. |
+
+Em cada etapa o docente recebe um email e pode acompanhar o estado do processo por um link próprio.
+
+## Instalação (cerca de 10 minutos, feita uma única vez, num computador)
+
+### Passo 1: criar o projecto
+
+1. Abra <https://script.google.com> e clique em **Novo projecto**.
+2. No topo, clique em "Projecto sem título" e dê-lhe o nome **Sistema de Avaliação Docente**.
+3. No ficheiro `Code.gs`, apague tudo e cole **todo** o conteúdo de **`Codigo.gs`**.
+4. À esquerda, clique em **+** ao lado de "Ficheiros" e escolha **HTML**. Dê ao ficheiro o nome **`Pagina`**, exactamente assim, sem ".html". Apague o conteúdo que aparece e cole **todo** o conteúdo de **`Pagina.html`**.
+5. Clique em **Guardar**.
+
+### Passo 2: instalar
+
+1. Na barra superior, escolha a função **`instalar`** e clique em **Executar**.
+2. Autorize o acesso quando o Google pedir. Se aparecer "A Google não validou esta app", clique em **Avançadas → Aceder ao projecto (não seguro)**. O script é seu e só trabalha na sua conta.
+3. O **Registo de execução** mostra o link da folha **"Registo — Avaliação de Desempenho Docente"**. A folha e a pasta **"Avaliação de Desempenho Docente — Sistema"** ficam no seu Drive.
+
+### Passo 3: indicar os avaliadores e a Direcção
+
+Abra a folha do Registo e vá ao separador **Configuração**. Escreva uma linha por pessoa:
+
+| Papel | Nome | Email |
+|---|---|---|
+| Avaliador | Dr. Carlos Mussa | carlos.mussa@ucm.ac.mz |
+| Avaliador | Dra. Rosa Nhantumbo | rosa.nhantumbo@ucm.ac.mz |
+| Direcção | Director Adjunto Pedagógico | direccao@ucm.ac.mz |
+
+- Os **avaliadores** aparecem na lista do formulário do docente.
+- Todas as pessoas com o papel **Direcção** recebem os processos validados.
+- Use emails de contas Google (Gmail ou institucional Google). Assim, as pastas de evidências são partilhadas só com essas pessoas.
+
+### Passo 4: publicar a página web
+
+1. No editor, clique em **Implementar → Nova implementação**.
+2. Na roda dentada, escolha **Aplicação Web**.
+3. Preencha:
+   - **Descrição:** Avaliação docente 2026
+   - **Executar como:** **Eu** (o seu email)
+   - **Quem tem acesso:** **Qualquer pessoa**
+4. Clique em **Implementar** e autorize, se pedir.
+5. Copie o **URL da aplicação Web**, que termina em `/exec`. **Este é o link que envia a todos os docentes.**
+
+## Onde fica cada coisa
+
+- **Registo:** uma linha por docente, com o estado do processo, as pontuações, o link da pasta e o link do PDF final. Serve de painel para a Direcção.
+- **Pasta "Processos por docente":** uma pasta por processo, com as evidências carregadas, as imagens das assinaturas e o **PDF final**.
+
+## Perguntas frequentes
+
+- **O docente precisa de conta Google?** Não. Basta o link e um email válido.
+- **Posso alterar o código depois?** Sim. Depois de guardar a alteração, vá a **Implementar → Gerir implementações → ✏️ (Editar) → Versão: Nova versão → Implementar**. O link mantém-se.
+- **Quero mudar o tamanho máximo dos ficheiros.** Altere `TAMANHO_MAX_MB` no início de `Codigo.gs`.
+- **Um link deixou de funcionar.** Quando a Direcção devolve um processo, o avaliador recebe um link novo. O link antigo deixa de ser válido por segurança.
+- **Limite de emails:** uma conta Gmail gratuita envia até cerca de 100 emails por dia. Cada processo completo usa 6 a 8 emails.
