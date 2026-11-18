@@ -1,0 +1,608 @@
+<title>Expedientes Académicos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* Layout: barra institucional + faixa do fluxo (5 etapas) + separadores por papel; detalhe do expediente abre numa folha lateral tipo "dossier". */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --sunk:#e8ecea; --line:#d3dad7;
+  --fg:#16232a; --muted:#5b6b70; --accent:#0f5f6a; --accent-ink:#ffffff; --accent-soft:#dcecec;
+  --stamp:#a5322b; --ok:#23794a; --ok-soft:#dff1e5; --warn:#9a6400; --warn-soft:#f8ecd3; --bad:#a5322b; --bad-soft:#f6e0dd; --info-soft:#e2e8f5; --info:#2e4f8f;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif; --f-body:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1719; --surface:#162226; --sunk:#1c2b30; --line:#2a3b40;
+  --fg:#e3ecee; --muted:#93a6ab; --accent:#5cbcc7; --accent-ink:#06262b; --accent-soft:#163a40;
+  --stamp:#ec7a70; --ok:#6cce93; --ok-soft:#173a27; --warn:#e8b45a; --warn-soft:#3a2e15; --bad:#ec7a70; --bad-soft:#41201d; --info-soft:#1f2b45; --info:#9db6ea; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1719; --surface:#162226; --sunk:#1c2b30; --line:#2a3b40;
+  --fg:#e3ecee; --muted:#93a6ab; --accent:#5cbcc7; --accent-ink:#06262b; --accent-soft:#163a40;
+  --stamp:#ec7a70; --ok:#6cce93; --ok-soft:#173a27; --warn:#e8b45a; --warn-soft:#3a2e15; --bad:#ec7a70; --bad-soft:#41201d; --info-soft:#1f2b45; --info:#9db6ea; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14.5px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:14px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.seal{width:40px;height:40px;border-radius:50%;border:2px solid var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;color:var(--accent);font-size:13px;flex:none}
+.brand h1{font-family:var(--f-display);font-size:19px;margin:0;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.brand p{margin:0;color:var(--muted);font-size:12.5px}
+.who{font-size:12.5px;color:var(--muted);text-align:right}
+.who b{color:var(--fg);font-weight:600}
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;margin-block:18px 6px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.flow button{all:unset;cursor:pointer;padding:12px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px;position:relative}
+.flow button:last-child{border-right:0}
+.flow button:hover{background:var(--sunk)}
+.flow button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.flow .n{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.flow .c{font-family:var(--f-display);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.flow .l{font-size:12.5px;color:var(--muted)}
+.flow button.on{background:var(--accent-soft)}
+.flow button.on .c{color:var(--accent)}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-block:14px;border-bottom:1px solid var(--line)}
+nav.tabs button{all:unset;cursor:pointer;padding:10px 14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:8px}
+nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+nav.tabs button:focus-visible{outline:2px solid var(--accent)}
+.badge{font-family:var(--f-mono);font-size:11px;background:var(--stamp);color:#fff;border-radius:10px;padding:0 7px;line-height:18px}
+main{padding-bottom:48px}
+.grid2{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}.flow{grid-template-columns:repeat(5,minmax(0,1fr))}.flow .l{display:none}.flow button{padding:10px 8px}.flow .c{font-size:21px}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel h2,.sec h2{font-family:var(--f-display);font-size:16px;margin:0 0 4px;font-weight:700}
+.hint{color:var(--muted);font-size:13px;margin:0 0 14px}
+form .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:480px){form .row{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:10px;min-width:0}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0;font-weight:400;font-size:14px}
+textarea{min-height:90px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:14px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;background:var(--bg)}
+.drop.has{border-style:solid;border-color:var(--accent);color:var(--fg)}
+.drop:focus-within{outline:2px solid var(--accent)}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg label{flex:1;text-align:center;padding:8px 6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-right:1px solid var(--line)}
+.seg label:last-child{border-right:0}
+.seg input{position:absolute;opacity:0;width:0;height:0}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink)}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-3px}
+.btn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:9px 16px;border-radius:6px;font-size:14px;text-align:center}
+.btn:hover{filter:brightness(1.08)}
+.btn:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.btn.stamp{background:var(--stamp);color:#fff}
+.btn.sm{padding:5px 10px;font-size:12.5px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn.full{width:100%}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar input,.toolbar select{width:auto;flex:1;min-width:140px}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.item:hover{border-color:var(--accent)}
+.item:focus-visible{outline:2px solid var(--accent)}
+.item .ref{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.item .t{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.item .m{font-size:12.5px;color:var(--muted);grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;border-radius:20px;padding:2px 9px;white-space:nowrap;align-self:start}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.p-recebido{background:var(--info-soft);color:var(--info)}
+.p-em_pareceres{background:var(--warn-soft);color:var(--warn)}
+.p-pronto_decisao{background:var(--accent-soft);color:var(--accent)}
+.p-decidido{background:var(--ok-soft);color:var(--ok)}
+.p-pendente{background:var(--warn-soft);color:var(--warn)}
+.p-emitido{background:var(--ok-soft);color:var(--ok)}
+.mini{display:flex;gap:3px;align-items:center}
+.mini i{width:18px;height:5px;border-radius:3px;background:var(--line)}
+.mini i.d{background:var(--ok)}
+.empty{border:1.5px dashed var(--line);border-radius:var(--r);padding:28px 18px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--fg);font-family:var(--f-display);font-size:15px;margin-bottom:4px}
+.banner{border-radius:var(--r);padding:10px 14px;font-size:13px;margin-top:14px;background:var(--warn-soft);color:var(--fg);border:1px solid var(--line)}
+/* Folha de detalhe */
+.sheet-bg{position:fixed;inset:0;background:rgba(10,20,22,.45);z-index:20;display:flex;justify-content:flex-end}
+.sheet{background:var(--bg);width:min(760px,100%);height:100%;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.2);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.sheet-h{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;gap:12px;align-items:flex-start;z-index:2}
+.sheet-h .ttl{flex:1;min-width:0}
+.sheet-h h3{margin:0;font-family:var(--f-display);font-size:18px;text-wrap:balance;overflow-wrap:anywhere}
+.sheet-b{padding:18px;display:flex;flex-direction:column;gap:16px}
+.x{all:unset;cursor:pointer;width:34px;height:34px;display:grid;place-items:center;border-radius:6px;font-size:20px;color:var(--muted);flex:none}
+.x:hover{background:var(--sunk)}
+.x:focus-visible{outline:2px solid var(--accent)}
+.steps{display:flex;gap:0;flex-wrap:wrap}
+.steps span{font-size:12px;padding:4px 10px 4px 14px;background:var(--sunk);color:var(--muted);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%,8px 50%);margin-right:-4px;font-weight:600}
+.steps span:first-child{clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%);padding-left:10px}
+.steps span.d{background:var(--accent);color:var(--accent-ink)}
+.steps span.cur{background:var(--warn-soft);color:var(--warn)}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+dl.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;margin:8px 0 0;font-size:13.5px}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;overflow-wrap:anywhere}
+.scan{display:block;border:1px solid var(--line);border-radius:6px;max-height:420px;width:auto;margin:10px auto 0;background:#fff}
+.pr{border-top:1px solid var(--line);padding-top:12px;margin-top:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px}
+.pr:first-of-type{border-top:0;margin-top:6px;padding-top:4px}
+.pr .nm{font-weight:600}
+.pr .cg{font-size:12.5px;color:var(--muted)}
+.pr .tx{grid-column:1/-1;white-space:pre-wrap;font-size:13.5px;background:var(--bg);border-radius:6px;padding:10px 12px;overflow-wrap:anywhere}
+.pr .sg{grid-column:1/-1;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pr .sg img{height:46px;background:#fff;border-radius:4px;border:1px solid var(--line)}
+.hash{font-family:var(--f-mono);font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.addrow{display:grid;grid-template-columns:1.2fr 1fr 1.3fr auto;gap:8px;align-items:end;margin-bottom:8px}
+@media (max-width:620px){.addrow{grid-template-columns:1fr}}
+.chips{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px}
+.chip{display:flex;gap:10px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:13px;min-width:0}
+.chip span{flex:1;min-width:0;overflow-wrap:anywhere}
+.sigbox{border:1px solid var(--line);border-radius:6px;background:#fff;position:relative;touch-action:none}
+.sigbox canvas{display:block;width:100%;height:150px;cursor:crosshair}
+.sigbox .lbl{position:absolute;left:12px;bottom:28px;right:12px;border-top:1px dashed #9aa7aa;pointer-events:none}
+.sigbox .lbl::after{content:"Assine aqui com o rato ou o dedo";position:absolute;left:0;top:4px;font-size:11px;color:#7b8a8d}
+.decision{border:2px solid var(--stamp);border-radius:var(--r);padding:16px;position:relative}
+.decision .stampmark{font-family:var(--f-display);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--stamp);border:2px solid var(--stamp);display:inline-block;padding:3px 10px;transform:rotate(-3deg);border-radius:4px;font-size:15px}
+.timeline{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.timeline li{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;padding:5px 0;border-bottom:1px dotted var(--line)}
+.timeline li time{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+@media (max-width:480px){.timeline li{grid-template-columns:1fr;gap:0}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:6px;z-index:40;font-size:13.5px;max-width:calc(100% - 32px)}
+.modal-bg{position:fixed;inset:0;background:rgba(10,20,22,.5);z-index:30;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border-radius:var(--r);max-width:600px;width:100%;max-height:90%;overflow-y:auto;padding:20px;border:1px solid var(--line)}
+.modal h3{margin:0 0 8px;font-family:var(--f-display)}
+.msg{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;white-space:pre-wrap;font-size:12.5px;font-family:var(--f-mono);max-height:180px;overflow:auto;user-select:all}
+.note{font-size:12px;color:var(--muted)}
+.mono{font-family:var(--f-mono)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:sl .18s ease-out}@keyframes sl{from{transform:translateX(24px);opacity:.6}}}
+</style>
+
+<header class="top"><div class="wrap">
+  <div class="brand"><div class="seal" aria-hidden="true">EXP</div>
+    <div style="min-width:0"><h1>Expedientes Académicos</h1><p id="inst">Gestão de cartas e requerimentos de estudantes</p></div></div>
+  <div class="who" id="who">A ligar à base de dados…</div>
+</div></header>
+
+<div class="wrap">
+  <div class="flow" id="flow" role="group" aria-label="Fluxo do expediente"></div>
+  <div id="banner"></div>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <main id="view"></main>
+</div>
+<div id="layer"></div>
+
+<script>
+/* ---------- Configuração do domínio ---------- */
+const APP_URL = "https://claude.ai/artifact/5Jy2MYt89Gqum8VpKTfic8";
+const CURSOS = ["Licenciatura em Gestão de Empresas","Licenciatura em Contabilidade e Auditoria","Licenciatura em Economia","Licenciatura em Direito","Licenciatura em Engenharia Informática","Licenciatura em Administração Pública","Licenciatura em Ciências da Educação","Mestrado em Gestão e Administração","Outro"];
+const TIPOS = ["Revisão de nota / prova","Exame de época especial","Equivalência de disciplinas","Transferência de curso","Mudança de turno ou regime","Anulação ou suspensão de matrícula","Reingresso","Prorrogação do pagamento de propinas","Justificação de faltas","Emissão de certificado ou declaração","Prorrogação de prazo de monografia","Outro"];
+const ASSIST = {direcao:"Assistente da Direcção", pedagogica:"Assistente Pedagógica"};
+const DECISORES = {director:"Director", director_pedagogico:"Director Pedagógico", administradora:"Administradora"};
+const ESTADOS = {recebido:"Recebido", em_pareceres:"Em pareceres", pronto_decisao:"Aguarda decisão", decidido:"Decidido"};
+const SENTIDOS = {favoravel:"Favorável", desfavoravel:"Desfavorável", condicionado:"Favorável com condições"};
+const DECISOES = {deferido:"Deferido", indeferido:"Indeferido", deferido_parcial:"Deferido parcialmente"};
+const TABS = [["secretaria","Secretaria"],["assistentes","Assistentes"],["pareceres","Pareceres"],["decisao","Decisão final"],["arquivo","Arquivo"]];
+
+/* ---------- Estado ---------- */
+const S = {db:null,user:null,mcp:null,assets:null,downloads:null,me:null,canEdit:false,
+  exps:[],pars:[],cfg:{},loaded:false,dbFail:false,
+  tab:ls("tab","secretaria"), assist:ls("assist","direcao"), decisor:ls("decisor","director"),
+  myEmail:ls("myEmail",""), q:"", stage:"", open:null, scanFile:null};
+function ls(k,d){try{return localStorage.getItem("exp."+k)??d}catch(e){return d}}
+function lss(k,v){try{localStorage.setItem("exp."+k,v)}catch(e){}}
+const $=s=>document.querySelector(s);
+const h=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const now=()=>new Date().toISOString();
+const fmt=(iso,t=true)=>{if(!iso)return"—";const d=new Date(iso);return d.toLocaleDateString("pt-MZ",{day:"2-digit",month:"2-digit",year:"numeric"})+(t?" "+d.toLocaleTimeString("pt-MZ",{hour:"2-digit",minute:"2-digit"}):"")};
+const rid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const okEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e||"");
+async function sha(t){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){return"indisponível"}}
+const shortHash=x=>(x||"").slice(0,24).replace(/(.{4})/g,"$1 ").trim();
+function toast(t){const d=document.createElement("div");d.className="toast";d.textContent=t;d.setAttribute("role","status");document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
+
+/* ---------- Derivados ---------- */
+const parsOf=id=>S.pars.filter(p=>p.expId===id).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+function stageOf(e){const ps=parsOf(e.id);
+  if(e.estado==="decidido")return 4; if(e.estado==="pronto_decisao")return 3;
+  if(e.estado==="em_pareceres")return ps.length&&ps.every(p=>p.estado==="emitido")?2.5:2; return 1}
+function pend(){const mine=(S.myEmail||"").toLowerCase();
+  return {secretaria:0,
+    assistentes:S.exps.filter(e=>e.assistente===S.assist&&(e.estado==="recebido"||stageOf(e)===2.5)).length,
+    pareceres:S.pars.filter(p=>p.estado==="pendente"&&mine&&p.email.toLowerCase()===mine&&(S.exps.find(e=>e.id===p.expId)||{}).estado==="em_pareceres").length,
+    decisao:S.exps.filter(e=>e.estado==="pronto_decisao"&&e.decisor===S.decisor).length, arquivo:0}}
+
+/* ---------- Render principal ---------- */
+function render(){
+  const c=S.cfg; $("#inst").textContent=[c.instituicao,c.unidade].filter(Boolean).join(" · ")||"Gestão de cartas e requerimentos de estudantes";
+  const st=[["01","Recebidos",S.exps.filter(e=>e.estado==="recebido").length,"recebido"],
+    ["02","Em pareceres",S.exps.filter(e=>e.estado==="em_pareceres").length,"em_pareceres"],
+    ["03","Pareceres pendentes",S.pars.filter(p=>p.estado==="pendente").length,"pp"],
+    ["04","Aguardam decisão",S.exps.filter(e=>e.estado==="pronto_decisao").length,"pronto_decisao"],
+    ["05","Decididos",S.exps.filter(e=>e.estado==="decidido").length,"decidido"]];
+  $("#flow").innerHTML=st.map(([n,l,c,k])=>`<button data-act="stage" data-k="${k}" class="${S.stage===k?"on":""}" aria-pressed="${S.stage===k}"><span class="n">${n}</span><span class="c">${c}</span><span class="l">${l}</span></button>`).join("");
+  const p=pend();
+  $("#tabs").innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${S.tab===k}" data-act="tab" data-k="${k}">${l}${p[k]?`<span class="badge" aria-label="${p[k]} pendentes">${p[k]}</span>`:""}</button>`).join("");
+  let b="";
+  if(S.dbFail)b=`<div class="banner"><b>Sem ligação à base de dados.</b> Abra esta página no claude.ai com a sessão iniciada para registar e consultar expedientes.</div>`;
+  else if(!S.loaded)b=`<div class="banner">A carregar expedientes…</div>`;
+  $("#banner").innerHTML=b;
+  const v=$("#view");
+  v.innerHTML=({secretaria:vSecretaria,assistentes:vAssist,pareceres:vPareceres,decisao:vDecisao,arquivo:vArquivo}[S.tab])();
+  if(S.tab==="secretaria")bindDrop();
+  if(S.open)renderSheet();
+}
+function itemRow(e,extra=""){const ps=parsOf(e.id);const done=ps.filter(p=>p.estado==="emitido").length;
+  return `<button class="item" data-act="open" data-id="${e.id}">
+    <div style="min-width:0"><div class="ref">${h(e.ref)}</div><div class="t">${h(e.tipoPedido)} — ${h(e.estudante)}</div></div>
+    <span class="pill p-${e.estado}">${ESTADOS[e.estado]}</span>
+    <div class="m"><span>${h(e.curso)}</span><span>Recebido ${fmt(e.dataRecepcao,false)}</span>${ps.length?`<span class="mini" title="${done} de ${ps.length} pareceres">${ps.map(p=>`<i class="${p.estado==="emitido"?"d":""}"></i>`).join("")} ${done}/${ps.length} pareceres</span>`:""}${extra}</div>
+  </button>`}
+function listOf(arr,emptyT,emptyD,extra){
+  let a=arr; if(S.stage){a=S.stage==="pp"?a.filter(e=>parsOf(e.id).some(p=>p.estado==="pendente")):a.filter(e=>e.estado===S.stage)}
+  if(S.q){const q=S.q.toLowerCase();a=a.filter(e=>[e.ref,e.estudante,e.numeroEstudante,e.curso,e.tipoPedido,e.assunto].join(" ").toLowerCase().includes(q))}
+  a=[...a].sort((x,y)=>(y.criadoEm||"").localeCompare(x.criadoEm||""));
+  const filt=S.stage?`<div class="note" style="margin-bottom:8px">Filtro do fluxo activo: <b>${h({pp:"Com pareceres pendentes",...ESTADOS}[S.stage])}</b> · <button class="btn ghost sm" data-act="stage" data-k="${S.stage}">Limpar</button></div>`:"";
+  return filt+(a.length?`<div class="list">${a.map(e=>itemRow(e,extra?extra(e):"")).join("")}</div>`:`<div class="empty"><b>${emptyT}</b>${emptyD}</div>`)}
+function searchBar(){return `<div class="toolbar"><input id="q" type="search" placeholder="Procurar por nº, estudante, curso, pedido…" value="${h(S.q)}" aria-label="Procurar expedientes"></div>`}
+
+/* ---------- 1. Secretaria ---------- */
+function vSecretaria(){
+  const today=new Date().toISOString().slice(0,10);
+  return `<div class="grid2">
+  <section class="panel"><h2>Registar carta recebida</h2><p class="hint">Digitalize a carta, anexe o ficheiro e encaminhe para a assistente responsável.</p>
+  <form id="fReg" autocomplete="off">
+    <label class="f">Nome do(a) estudante<input id="r_nome" required placeholder="Ex.: Amina Sitoe"></label>
+    <div class="row"><label class="f">Nº de estudante<input id="r_num" placeholder="Ex.: 20231045"></label>
+      <label class="f">Data de recepção<input id="r_data" type="date" value="${today}" required></label></div>
+    <label class="f">Curso<select id="r_curso" required><option value="">Seleccione o curso</option>${CURSOS.map(c=>`<option>${h(c)}</option>`).join("")}</select></label>
+    <label class="f">Tipo de pedido<select id="r_tipo" required><option value="">Seleccione o tipo de pedido</option>${TIPOS.map(c=>`<option>${h(c)}</option>`).join("")}</select></label>
+    <label class="f">Assunto / resumo da carta<textarea id="r_assunto" required placeholder="Ex.: Solicita revisão da nota do exame normal de Estatística II (2.º semestre)."></textarea></label>
+    <div class="row"><label class="f">Contacto (opcional)<input id="r_contacto" placeholder="Telefone ou e-mail"></label>
+      <label class="f">Nº de folhas<input id="r_folhas" type="number" min="1" value="1"></label></div>
+    <label class="f">Carta digitalizada (PDF ou imagem)
+      <div class="drop" id="drop"><input id="r_file" type="file" accept="application/pdf,image/*" style="position:absolute;opacity:0;width:1px;height:1px"><span id="dropT">Arraste o ficheiro para aqui ou <u>escolha do computador</u></span></div></label>
+    <span class="f" style="display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px">Submeter a</span>
+    <div class="seg" role="radiogroup" aria-label="Submeter a" style="margin-bottom:14px">
+      <label><input type="radio" name="r_ass" value="direcao" checked>Assistente da Direcção</label>
+      <label><input type="radio" name="r_ass" value="pedagogica">Assistente Pedagógica</label></div>
+    <button class="btn full" type="submit" id="r_btn">Registar e submeter</button>
+    <p class="note" style="margin-top:8px">Se o e-mail da assistente estiver nas definições, ela recebe uma notificação.</p>
+  </form>
+  ${S.canEdit?`<button class="btn ghost sm" data-act="cfg" style="margin-top:12px">Definições da instituição e contactos</button>`:""}
+  </section>
+  <section><div class="sec" style="padding:0;border:0;background:none"><h2>Expedientes registados</h2><p class="hint">Todos os documentos recebidos na secretaria, do mais recente para o mais antigo.</p></div>
+  ${searchBar()}${listOf(S.exps,"Ainda não há expedientes.","Registe a primeira carta no formulário ao lado; ela aparece aqui com o seu número de expediente.",e=>`<span>→ ${ASSIST[e.assistente]}</span>`)}</section></div>`}
+function bindDrop(){const d=$("#drop"),f=$("#r_file");if(!d)return;
+  d.onclick=()=>f.click();
+  d.ondragover=e=>{e.preventDefault();d.classList.add("has")};
+  d.ondragleave=()=>{if(!S.scanFile)d.classList.remove("has")};
+  d.ondrop=e=>{e.preventDefault();if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0])};
+  f.onchange=()=>f.files[0]&&setFile(f.files[0]);
+  if(S.scanFile)setFile(S.scanFile)}
+function setFile(file){S.scanFile=file;const d=$("#drop");d.classList.add("has");$("#dropT").innerHTML=`<b>${h(file.name)}</b> · ${(file.size/1024).toFixed(0)} KB — <u>trocar</u>`}
+
+async function storeScan(file,expId){
+  if(S.assets){try{const r=await S.assets.upload(file);return{assetId:r.id,url:r.url,nome:file.name,tipo:r.contentType||file.type}}catch(e){console.warn("upload",e)}}
+  // alternativa: guardar uma versão compactada na base de dados
+  let dataUrl;
+  if(file.type.startsWith("image/"))dataUrl=await shrinkImage(file,1400,.72);
+  else{if(file.size>700*1024)throw new Error("O PDF tem mais de 700 KB e não foi possível usar o armazenamento de ficheiros. Digitalize em menor resolução ou como imagem.");dataUrl=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(file)})}
+  await S.db.doc("digitalizacoes/"+expId).set({dataUrl,nome:file.name,tipo:file.type});
+  return{inline:true,nome:file.name,tipo:file.type.startsWith("image/")?"image/jpeg":file.type}}
+function shrinkImage(file,max,q){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const s=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",q))};img.onerror=rej;img.src=URL.createObjectURL(file)})}
+
+async function registar(ev){ev.preventDefault();if(!S.db)return toast("Sem ligação à base de dados.");
+  if(!S.scanFile)return toast("Anexe a carta digitalizada antes de submeter.");
+  const btn=$("#r_btn");btn.disabled=true;btn.textContent="A registar…";
+  try{const id=rid();const yr=new Date().getFullYear();
+    const n=S.exps.filter(e=>(e.ref||"").includes("/"+yr+"/")).length+1;
+    const ref=`EXP/${yr}/${String(n).padStart(4,"0")}`;
+    const scan=await storeScan(S.scanFile,id);
+    const ass=document.querySelector('input[name="r_ass"]:checked').value;
+    const e={ref,estudante:$("#r_nome").value.trim(),numeroEstudante:$("#r_num").value.trim(),curso:$("#r_curso").value,tipoPedido:$("#r_tipo").value,
+      assunto:$("#r_assunto").value.trim(),contacto:$("#r_contacto").value.trim(),folhas:Number($("#r_folhas").value||1),dataRecepcao:$("#r_data").value,
+      scan,assistente:ass,estado:"recebido",criadoEm:now(),criadoPor:S.me?.name||"Secretaria",
+      historico:[{em:now(),acao:`Carta registada na secretaria e submetida à ${ASSIST[ass]}`,por:S.me?.name||"Secretaria"}]};
+    await S.db.doc("expedientes/"+id).set(e);
+    S.scanFile=null;$("#fReg").reset();$("#dropT").textContent="Arraste o ficheiro para aqui ou escolha do computador";$("#drop").classList.remove("has");
+    const em=S.cfg.emails?.[ass];
+    if(okEmail(em)){const r=await notify(em,`Novo expediente ${ref}: ${e.tipoPedido}`,
+      `Bom dia,\n\nDeu entrada na secretaria o expediente ${ref}.\n\nEstudante: ${e.estudante} (${e.curso})\nPedido: ${e.tipoPedido}\nAssunto: ${e.assunto}\n\nAceda à plataforma, separador «Assistentes», para encaminhar aos intervenientes.\n${APP_URL}\n\nCumprimentos,\nSecretaria`);
+      toast(r==="enviado"?`${ref} registado. ${ASSIST[ass]} notificada por e-mail.`:`${ref} registado. Não foi possível enviar o e-mail automático.`)}
+    else toast(`${ref} registado e submetido à ${ASSIST[ass]}.`);
+  }catch(err){toast(err.message||"Não foi possível registar. Tente de novo.")}
+  finally{btn.disabled=false;btn.textContent="Registar e submeter"}}
+
+/* ---------- 2. Assistentes ---------- */
+function vAssist(){
+  const mine=S.exps.filter(e=>e.assistente===S.assist);
+  const act=mine.filter(e=>e.estado==="recebido"||e.estado==="em_pareceres");
+  return `<div class="toolbar"><div class="seg" role="radiogroup" aria-label="Assistente" style="flex:0 1 420px">
+    ${Object.entries(ASSIST).map(([k,l])=>`<label><input type="radio" name="as" value="${k}" ${S.assist===k?"checked":""} data-act="assist">${l}</label>`).join("")}</div></div>
+  <h2 style="font-family:var(--f-display);font-size:16px;margin:4px 0">Caixa de entrada — ${ASSIST[S.assist]}</h2>
+  <p class="hint">Abra cada expediente para indicar os intervenientes (nome e e-mail) e notificá-los. Quando todos emitirem parecer, submeta à decisão final.</p>
+  ${listOf(act,"Sem expedientes por tratar.","Quando a secretaria submeter uma carta para a "+ASSIST[S.assist]+", ela aparece aqui.",e=>stageOf(e)===2.5?`<span style="color:var(--ok);font-weight:600">✓ Pareceres concluídos — pronto a submeter</span>`:"")}
+  <h2 style="font-family:var(--f-display);font-size:15px;margin:22px 0 8px">Já submetidos à decisão</h2>
+  ${listOf(mine.filter(e=>e.estado==="pronto_decisao"||e.estado==="decidido"),"Nada submetido ainda.","")}`}
+
+/* ---------- 3. Pareceres ---------- */
+function vPareceres(){
+  const mine=(S.myEmail||"").toLowerCase();
+  const ps=S.pars.filter(p=>mine&&p.email.toLowerCase()===mine);
+  const row=p=>{const e=S.exps.find(x=>x.id===p.expId);if(!e)return"";return `<button class="item" data-act="open" data-id="${e.id}">
+    <div style="min-width:0"><div class="ref">${h(e.ref)} · pedido por ${h(ASSIST[e.assistente])}</div><div class="t">${h(e.tipoPedido)} — ${h(e.estudante)}</div></div>
+    <span class="pill p-${p.estado}">${p.estado==="emitido"?"Parecer emitido":"Aguarda o seu parecer"}</span>
+    <div class="m"><span>${h(e.curso)}</span><span>Solicitado ${fmt(p.solicitadoEm)}</span>${p.emitidoEm?`<span>Emitido ${fmt(p.emitidoEm)}</span>`:""}</div></button>`};
+  const pen=ps.filter(p=>p.estado==="pendente"),done=ps.filter(p=>p.estado==="emitido");
+  return `<section class="panel" style="margin-bottom:16px"><h2>Os meus pedidos de parecer</h2>
+   <p class="hint">Entre com o e-mail em que recebeu a notificação. Os pedidos dirigidos a esse endereço aparecem abaixo.</p>
+   <form id="fMail" class="toolbar" style="margin:0"><input id="myEmail" type="email" placeholder="o.seu.email@instituicao.ac.mz" value="${h(S.myEmail)}" aria-label="O seu e-mail"><button class="btn" type="submit">Ver os meus pedidos</button></form></section>
+  ${!mine?`<div class="empty"><b>Indique o seu e-mail.</b>Os pedidos de parecer são associados ao e-mail que a assistente preencheu.</div>`:
+   `<h2 style="font-family:var(--f-display);font-size:15px;margin:4px 0 8px">Por emitir (${pen.length})</h2>${pen.length?`<div class="list">${pen.map(row).join("")}</div>`:`<div class="empty"><b>Nenhum parecer pendente para ${h(S.myEmail)}.</b>Quando uma assistente o indicar como interveniente, o pedido aparece aqui.</div>`}
+   <h2 style="font-family:var(--f-display);font-size:15px;margin:22px 0 8px">Emitidos (${done.length})</h2>${done.length?`<div class="list">${done.map(row).join("")}</div>`:`<p class="note">Ainda não emitiu pareceres.</p>`}`}`}
+
+/* ---------- 4. Decisão ---------- */
+function vDecisao(){
+  const mine=S.exps.filter(e=>e.decisor===S.decisor);
+  return `<div class="toolbar"><div class="seg" role="radiogroup" aria-label="Decisor" style="flex:0 1 560px">
+   ${Object.entries(DECISORES).map(([k,l])=>`<label><input type="radio" name="dc" value="${k}" ${S.decisor===k?"checked":""} data-act="decisor">${l}</label>`).join("")}</div></div>
+   <h2 style="font-family:var(--f-display);font-size:16px;margin:4px 0">Para decisão — ${DECISORES[S.decisor]}</h2>
+   <p class="hint">Cada processo chega com todos os pareceres assinados. Leia, decida, assine o despacho e descarregue o documento final para impressão.</p>
+   ${listOf(mine.filter(e=>e.estado==="pronto_decisao"),"Sem processos a aguardar decisão.","Os expedientes submetidos pelas assistentes ao "+DECISORES[S.decisor]+" aparecem aqui.")}
+   <h2 style="font-family:var(--f-display);font-size:15px;margin:22px 0 8px">Decididos</h2>
+   ${listOf(mine.filter(e=>e.estado==="decidido"),"Nenhuma decisão registada.","",e=>`<span><b>${h(DECISOES[e.decisao?.sentido]||"")}</b> em ${fmt(e.decisao?.em,false)}</span>`)}`}
+
+/* ---------- 5. Arquivo ---------- */
+function vArquivo(){
+  const byTipo={};S.exps.forEach(e=>byTipo[e.tipoPedido]=(byTipo[e.tipoPedido]||0)+1);
+  const top=Object.entries(byTipo).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const dec=S.exps.filter(e=>e.estado==="decidido");
+  const dias=dec.map(e=>(new Date(e.decisao.em)-new Date(e.criadoEm))/864e5).filter(x=>x>=0);
+  const media=dias.length?(dias.reduce((a,b)=>a+b,0)/dias.length).toFixed(1):"—";
+  return `<div class="grid2"><section class="panel"><h2>Resumo</h2><p class="hint">Indicadores do conjunto dos expedientes.</p>
+    <dl class="kv"><dt>Total registado</dt><dd class="mono">${S.exps.length}</dd><dt>Decididos</dt><dd class="mono">${dec.length}</dd>
+    <dt>Deferidos</dt><dd class="mono">${dec.filter(e=>e.decisao.sentido!=="indeferido").length}</dd><dt>Indeferidos</dt><dd class="mono">${dec.filter(e=>e.decisao.sentido==="indeferido").length}</dd>
+    <dt>Tempo médio até decisão</dt><dd class="mono">${media} dias</dd></dl>
+    <h2 style="margin-top:18px">Pedidos mais frequentes</h2>${top.length?`<dl class="kv">${top.map(([t,n])=>`<dt class="mono">${n}</dt><dd>${h(t)}</dd>`).join("")}</dl>`:`<p class="note">Sem dados ainda.</p>`}</section>
+   <section>${searchBar()}${listOf(S.exps,"O arquivo está vazio.","Os expedientes registados pela secretaria ficam aqui com o histórico completo.",e=>`<span>${h(ASSIST[e.assistente])}</span>`)}</section></div>`}
+
+/* ---------- Folha de detalhe ---------- */
+function renderSheet(){
+  const e=S.exps.find(x=>x.id===S.open);if(!e){$("#layer").innerHTML="";return}
+  const keep=document.activeElement?.id; const keepVal={};
+  document.querySelectorAll("#layer input,#layer textarea,#layer select").forEach(x=>{if(x.id)keepVal[x.id]=x.type==="radio"?(x.checked?"1":""):x.value});
+  const existing=$("#layer .sheet");const sc=existing?existing.scrollTop:0;
+  const sigKeep={};Object.entries(SIG).forEach(([k,v])=>{if(v.drawn&&v.c.isConnected)sigKeep[k]=v.c.toDataURL()});
+  const ps=parsOf(e.id);const sg=stageOf(e);
+  const steps=[["Recepção",1],["Encaminhamento",2],["Pareceres",2.5],["Decisão final",3],["Arquivado",4]];
+  const mineEmail=(S.myEmail||"").toLowerCase();
+  const myPar=S.tab==="pareceres"?ps.find(p=>p.email.toLowerCase()===mineEmail&&p.estado==="pendente"):null;
+  const scanHtml=e.scan?(e.scan.inline?`<div id="scanInline" class="note">A carregar digitalização…</div>`:
+     (e.scan.tipo||"").startsWith("image/")?`<img class="scan" src="${h(e.scan.url)}" alt="Carta digitalizada de ${h(e.estudante)}">`:
+     `<p><a class="btn ghost sm" href="${h(e.scan.url)}" target="_blank" rel="noopener">Abrir carta digitalizada (${h(e.scan.nome)})</a></p>`):"<p class='note'>Sem digitalização.</p>";
+  $("#layer").innerHTML=`<div class="sheet-bg" data-act="close"><aside class="sheet" role="dialog" aria-modal="true" aria-label="Expediente ${h(e.ref)}">
+   <div class="sheet-h"><div class="ttl"><div class="ref mono note">${h(e.ref)}</div><h3>${h(e.tipoPedido)} — ${h(e.estudante)}</h3>
+     <div class="steps" style="margin-top:8px">${steps.map(([l,v])=>`<span class="${sg>v||(sg===4&&v===4)?"d":sg===v||(sg===2&&v===2.5)?"cur":""}">${l}</span>`).join("")}</div></div>
+     <button class="x" data-act="close" aria-label="Fechar">×</button></div>
+   <div class="sheet-b">
+    <div class="sec"><h2>Requerimento</h2><dl class="kv">
+      <dt>Estudante</dt><dd>${h(e.estudante)}${e.numeroEstudante?` · nº ${h(e.numeroEstudante)}`:""}</dd><dt>Curso</dt><dd>${h(e.curso)}</dd>
+      <dt>Tipo de pedido</dt><dd>${h(e.tipoPedido)}</dd><dt>Assunto</dt><dd>${h(e.assunto)}</dd>
+      ${e.contacto?`<dt>Contacto</dt><dd>${h(e.contacto)}</dd>`:""}<dt>Recepção</dt><dd>${fmt(e.dataRecepcao,false)} · ${e.folhas||1} folha(s)</dd>
+      <dt>Submetido a</dt><dd>${h(ASSIST[e.assistente])}</dd>${e.decisor?`<dt>Decisor</dt><dd>${h(DECISORES[e.decisor])}${e.decisorNome?` — ${h(e.decisorNome)}`:""}</dd>`:""}</dl>
+      ${scanHtml}</div>
+    ${S.tab==="assistentes"?assistPanel(e,ps):""}
+    <div class="sec"><h2>Pareceres (${ps.filter(p=>p.estado==="emitido").length}/${ps.length})</h2>
+      ${ps.length?ps.map(parecerBlock).join(""):`<p class="note">Ainda não foram indicados intervenientes.</p>`}</div>
+    ${myPar?parecerForm(myPar):""}
+    ${S.tab==="decisao"&&e.estado==="pronto_decisao"?decisaoForm(e):""}
+    ${e.estado==="decidido"?decisaoBlock(e):""}
+    <div class="sec"><h2>Histórico</h2><ul class="timeline">${timeline(e,ps).map(t=>`<li><time>${fmt(t.em)}</time><span>${h(t.acao)}${t.por?` <span class="note">— ${h(t.por)}</span>`:""}</span></li>`).join("")}</ul></div>
+   </div></aside></div>`;
+  const ns=$("#layer .sheet");ns.scrollTop=sc;
+  Object.entries(keepVal).forEach(([k,v])=>{const x=document.getElementById(k);if(!x)return;if(x.type==="radio")x.checked=!!v;else x.value=v});
+  if(keep&&document.getElementById(keep))document.getElementById(keep).focus();
+  document.querySelectorAll("#layer .sigbox").forEach(sigPad);
+  Object.entries(sigKeep).forEach(([k,u])=>{const s=SIG[k];if(!s)return;const i=new Image();i.onload=()=>{s.c.getContext("2d").drawImage(i,0,0);s.drawn=true};i.src=u});
+  if(e.scan?.inline)loadInline(e);
+}
+async function loadInline(e){try{const d=await S.db.doc("digitalizacoes/"+e.id).get();const x=d.data();const el=$("#scanInline");if(!el||!x)return;
+  el.outerHTML=x.tipo.startsWith("image/")?`<img class="scan" src="${x.dataUrl}" alt="Carta digitalizada">`:`<p><a class="btn ghost sm" href="${x.dataUrl}" target="_blank" rel="noopener">Abrir carta digitalizada (${h(x.nome)})</a></p>`}catch(err){}}
+function timeline(e,ps){const t=[...(e.historico||[])];
+  ps.forEach(p=>{if(p.emitidoEm)t.push({em:p.emitidoEm,acao:`Parecer ${SENTIDOS[p.sentido].toLowerCase()} emitido e assinado por ${p.nome}`})});
+  if(e.decisao)t.push({em:e.decisao.em,acao:`Despacho: ${DECISOES[e.decisao.sentido]}`,por:e.decisao.nome});
+  return t.sort((a,b)=>a.em.localeCompare(b.em))}
+function parecerBlock(p){return `<div class="pr"><div><div class="nm">${h(p.nome)}</div><div class="cg">${h(p.cargo||"")} · ${h(p.email)}</div></div>
+  <span class="pill p-${p.estado}">${p.estado==="emitido"?SENTIDOS[p.sentido]:"Pendente"}</span>
+  ${p.estado==="emitido"?`<div class="tx">${h(p.texto)}</div><div class="sg"><img src="${p.assinatura}" alt="Assinatura de ${h(p.nome)}"><div><div class="note">Assinado electronicamente em ${fmt(p.emitidoEm)}</div><div class="hash">SHA-256 ${shortHash(p.hash)}</div></div></div>`:
+   `<div class="note" style="grid-column:1/-1">Notificado em ${fmt(p.solicitadoEm)}${p.notificacao==="manual"?" (notificação manual)":""}</div>`}</div>`}
+function assistPanel(e,ps){
+  if(e.estado==="recebido"||e.estado==="em_pareceres"){
+    const all=ps.length&&ps.every(p=>p.estado==="emitido");
+    return `<div class="sec"><h2>Encaminhar para parecer</h2><p class="hint">Indique cada interveniente. Ao encaminhar, cada um recebe um e-mail com o pedido de parecer.</p>
+      <div class="addrow"><label class="f" style="margin:0">Nome<input id="i_nome" placeholder="Ex.: Dr. Carlos Mabunda"></label>
+       <label class="f" style="margin:0">Cargo<input id="i_cargo" placeholder="Ex.: Director do Curso"></label>
+       <label class="f" style="margin:0">E-mail<input id="i_email" type="email" placeholder="cmabunda@instituicao.ac.mz"></label>
+       <button class="btn ghost" data-act="addI">Adicionar</button></div>
+      <div class="chips">${(S.draftI||[]).map((x,i)=>`<div class="chip"><span><b>${h(x.nome)}</b> · ${h(x.cargo)} · ${h(x.email)}</span><button class="x" style="width:26px;height:26px;font-size:16px" data-act="rmI" data-i="${i}" aria-label="Remover ${h(x.nome)}">×</button></div>`).join("")}</div>
+      <button class="btn" data-act="encaminhar" ${(S.draftI||[]).length?"":"disabled"}>Encaminhar e notificar ${(S.draftI||[]).length||""} interveniente(s)</button></div>
+    ${e.estado==="em_pareceres"?`<div class="sec"><h2>Submeter à decisão final</h2>
+      <p class="hint">${all?"Todos os intervenientes emitiram parecer. Escolha quem toma a decisão final.":`Disponível quando todos os pareceres estiverem emitidos (${ps.filter(p=>p.estado==="emitido").length}/${ps.length}).`}</p>
+      <div class="row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+       <label class="f">Decisor<select id="d_quem">${Object.entries(DECISORES).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select></label>
+       <label class="f">Nome<input id="d_nome" placeholder="Nome do decisor" value="${h(S.cfg.nomes?.director||"")}"></label>
+       <label class="f">E-mail<input id="d_email" type="email" value="${h(S.cfg.emails?.director||"")}"></label></div>
+      <button class="btn stamp" data-act="submeter" ${all?"":"disabled"}>Submeter à decisão final</button></div>`:""}`}
+  return ""}
+function parecerForm(p){return `<div class="sec" style="border-color:var(--accent)"><h2>Emitir o seu parecer</h2><p class="hint">Leia a carta acima, escreva o parecer e assine. Depois de assinado, o parecer não pode ser alterado.</p>
+  <span class="f" style="display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px">Sentido do parecer</span>
+  <div class="seg" style="margin-bottom:10px">${Object.entries(SENTIDOS).map(([k,l],i)=>`<label><input type="radio" name="p_s" id="p_s_${k}" value="${k}" ${i===0?"checked":""}>${l}</label>`).join("")}</div>
+  <label class="f">Fundamentação<textarea id="p_txt" placeholder="Ex.: Confirmada a pauta e a prova, verifica-se erro na soma das cotações da questão 3. Sou de parecer favorável à revisão."></textarea></label>
+  <span class="f" style="display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px">Assinatura electrónica</span>
+  <div class="sigbox" data-key="par"><canvas width="900" height="300" aria-label="Área de assinatura"></canvas><div class="lbl"></div></div>
+  <div class="actions"><button class="btn ghost sm" data-act="clearSig">Limpar assinatura</button></div>
+  <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:12px 0"><input type="checkbox" id="p_ok" style="width:auto;margin-top:3px">Declaro que sou ${h(p.nome)} e que este parecer e a assinatura são da minha autoria.</label>
+  <button class="btn" data-act="emitir" data-pid="${p.id}">Assinar e emitir parecer</button></div>`}
+function decisaoForm(e){return `<div class="decision"><h2 style="font-family:var(--f-display);margin:0 0 6px">Decisão final</h2><p class="hint">Como ${h(DECISORES[e.decisor])}, registe o despacho e assine.</p>
+  <div class="seg" style="margin-bottom:10px">${Object.entries(DECISOES).map(([k,l],i)=>`<label><input type="radio" name="d_s" id="d_s_${k}" value="${k}" ${i===0?"checked":""}>${l}</label>`).join("")}</div>
+  <label class="f">Despacho<textarea id="d_txt" placeholder="Ex.: Deferido. Proceda-se à revisão da prova pelo júri do curso no prazo de 5 dias úteis. Notifique-se o estudante."></textarea></label>
+  <label class="f">Nome de quem assina<input id="d_assn" value="${h(e.decisorNome||S.me?.name||"")}"></label>
+  <div class="sigbox" data-key="dec"><canvas width="900" height="300" aria-label="Área de assinatura"></canvas><div class="lbl"></div></div>
+  <div class="actions"><button class="btn ghost sm" data-act="clearSig">Limpar assinatura</button></div>
+  <div class="actions" style="margin-top:12px"><button class="btn stamp" data-act="decidir">Assinar despacho</button></div></div>`}
+function decisaoBlock(e){const d=e.decisao;return `<div class="decision"><span class="stampmark">${h(DECISOES[d.sentido])}</span>
+  <p style="white-space:pre-wrap;margin:12px 0">${h(d.texto)}</p>
+  <div class="pr" style="border:0;padding:0;margin:0"><div class="sg"><img src="${d.assinatura}" alt="Assinatura do decisor"><div><b>${h(d.nome)}</b><div class="note">${h(DECISORES[e.decisor])} · ${fmt(d.em)}</div><div class="hash">SHA-256 ${shortHash(d.hash)}</div></div></div></div>
+  <div class="actions" style="margin-top:12px"><button class="btn" data-act="pdf">Descarregar documento final (PDF)</button></div>
+  <p class="note">O PDF reúne o requerimento, todos os pareceres assinados e o despacho, pronto para imprimir e arquivar no processo do estudante.</p></div>`}
+
+/* ---------- Assinatura ---------- */
+const SIG={};
+function sigPad(box){const c=box.querySelector("canvas"),x=c.getContext("2d"),k=box.dataset.key;SIG[k]={c,drawn:false};
+  x.lineWidth=4;x.lineCap="round";x.lineJoin="round";x.strokeStyle="#0b2340";let dn=false;
+  const pt=ev=>{const r=c.getBoundingClientRect();return[(ev.clientX-r.left)*c.width/r.width,(ev.clientY-r.top)*c.height/r.height]};
+  c.onpointerdown=ev=>{dn=true;c.setPointerCapture(ev.pointerId);const[a,b]=pt(ev);x.beginPath();x.moveTo(a,b)};
+  c.onpointermove=ev=>{if(!dn)return;const[a,b]=pt(ev);x.lineTo(a,b);x.stroke();SIG[k].drawn=true};
+  c.onpointerup=c.onpointercancel=()=>{dn=false}}
+function sigData(k){const s=SIG[k];if(!s||!s.drawn)return null;
+  const {c}=s,x=c.getContext("2d"),d=x.getImageData(0,0,c.width,c.height).data;let a=c.width,b=c.height,m=0,n=0;
+  for(let y=0;y<c.height;y+=2)for(let i=0;i<c.width;i+=2){if(d[(y*c.width+i)*4+3]>0){if(i<a)a=i;if(i>m)m=i;if(y<b)b=y;if(y>n)n=y}}
+  const w=Math.max(10,m-a+12),hh=Math.max(10,n-b+12),o=document.createElement("canvas");o.width=w;o.height=hh;o.getContext("2d").drawImage(c,a-6,b-6,w,hh,0,0,w,hh);return o.toDataURL("image/png")}
+
+/* ---------- Notificações ---------- */
+async function notify(to,subject,body){
+  if(S.mcp){try{await S.mcp.callTool("Gmail","send_message",{to:[to],subject,body});return"enviado"}catch(err){console.warn("gmail",err)}}
+  return"manual"}
+function showManual(list){if(!list.length)return;
+  $("#layer").insertAdjacentHTML("beforeend",`<div class="modal-bg" id="mm"><div class="modal" role="dialog" aria-modal="true" aria-label="Notificações por enviar">
+   <h3>Notificações por enviar</h3><p class="hint">O envio automático por e-mail não está disponível nesta sessão. Copie cada mensagem e envie-a a partir do seu e-mail institucional.</p>
+   ${list.map((m,i)=>`<p style="margin:12px 0 4px"><b>Para:</b> <span class="mono" style="user-select:all">${h(m.to)}</span><br><b>Assunto:</b> ${h(m.subject)}</p><div class="msg" id="msg${i}">${h(m.body)}</div><button class="btn ghost sm" style="margin-top:6px" data-act="copy" data-i="${i}">Copiar mensagem</button>`).join("")}
+   <div class="actions" style="margin-top:16px"><button class="btn" data-act="closeModal">Concluído</button></div></div></div>`);
+  S.manual=list}
+
+/* ---------- Acções ---------- */
+async function encaminhar(e){const list=S.draftI||[];if(!list.length)return;
+  const base=parsOf(e.id).length;const por=S.me?.name||ASSIST[e.assistente];const manual=[];
+  for(const [i,x] of list.entries()){const pid=e.id+"_"+(base+i+1);
+    const body=`Caro(a) ${x.nome},\n\nSolicita-se o seu parecer sobre o expediente ${e.ref}.\n\nEstudante: ${e.estudante}${e.numeroEstudante?" (nº "+e.numeroEstudante+")":""}\nCurso: ${e.curso}\nPedido: ${e.tipoPedido}\nAssunto: ${e.assunto}\n\nAceda à plataforma de Expedientes Académicos, separador «Pareceres», e entre com este e-mail (${x.email}) para ler a carta, emitir o parecer e assinar electronicamente.\n${APP_URL}\n\nCumprimentos,\n${por}\n${ASSIST[e.assistente]}`;
+    const subject=`Pedido de parecer — ${e.ref}: ${e.tipoPedido}`;
+    const r=await notify(x.email,subject,body);if(r==="manual")manual.push({to:x.email,subject,body});
+    await S.db.doc("pareceres/"+pid).set({expId:e.id,ordem:base+i+1,nome:x.nome,cargo:x.cargo,email:x.email.toLowerCase(),estado:"pendente",solicitadoEm:now(),solicitadoPor:por,notificacao:r})}
+  await S.db.doc("expedientes/"+e.id).update({estado:"em_pareceres",historico:[...(e.historico||[]),{em:now(),acao:`Encaminhado para parecer: ${list.map(x=>x.nome).join(", ")}`,por}]});
+  S.draftI=[];toast(manual.length?"Encaminhado. Algumas notificações têm de ser enviadas manualmente.":"Encaminhado. Intervenientes notificados por e-mail.");
+  showManual(manual)}
+async function submeter(e){const quem=$("#d_quem").value,nome=$("#d_nome").value.trim(),email=$("#d_email").value.trim();
+  if(!okEmail(email))return toast("Indique um e-mail válido para o decisor.");
+  const por=S.me?.name||ASSIST[e.assistente];
+  const subject=`Para decisão — ${e.ref}: ${e.tipoPedido}`;
+  const body=`Exmo(a). ${nome||DECISORES[quem]},\n\nO expediente ${e.ref} (${e.tipoPedido} — ${e.estudante}, ${e.curso}) tem todos os pareceres emitidos e assinados (${parsOf(e.id).length}) e aguarda a sua decisão final.\n\nAceda à plataforma, separador «Decisão final», para ler o processo, assinar o despacho e descarregar o documento final para impressão.\n${APP_URL}\n\nCumprimentos,\n${por}\n${ASSIST[e.assistente]}`;
+  const r=await notify(email,subject,body);
+  await S.db.doc("expedientes/"+e.id).update({estado:"pronto_decisao",decisor:quem,decisorNome:nome,decisorEmail:email.toLowerCase(),submetidoDecisaoEm:now(),
+    historico:[...(e.historico||[]),{em:now(),acao:`Submetido à decisão final do ${DECISORES[quem]}${nome?" ("+nome+")":""}`,por}]});
+  toast("Submetido à decisão final.");if(r==="manual")showManual([{to:email,subject,body}])}
+async function emitir(pid){const p=S.pars.find(x=>x.id===pid);if(!p)return;
+  const texto=$("#p_txt").value.trim(),sentido=document.querySelector('input[name="p_s"]:checked').value,sig=sigData("par");
+  if(texto.length<10)return toast("Escreva a fundamentação do parecer.");
+  if(!sig)return toast("Assine na área de assinatura.");
+  if(!$("#p_ok").checked)return toast("Confirme a declaração de autoria.");
+  const em=now();const hash=await sha([p.expId,p.email,sentido,texto,em].join("|"));
+  await S.db.doc("pareceres/"+pid).update({estado:"emitido",sentido,texto,assinatura:sig,emitidoEm:em,hash,emitidoPorId:S.me?.id||null,emitidoPorConta:S.me?.name||null});
+  toast("Parecer assinado e emitido.")}
+async function decidir(e){const texto=$("#d_txt").value.trim(),sentido=document.querySelector('input[name="d_s"]:checked').value,sig=sigData("dec"),nome=$("#d_assn").value.trim();
+  if(texto.length<5)return toast("Escreva o despacho.");if(!sig)return toast("Assine o despacho.");if(!nome)return toast("Indique o nome de quem assina.");
+  const em=now();const hash=await sha([e.id,sentido,texto,nome,em,...parsOf(e.id).map(p=>p.hash)].join("|"));
+  await S.db.doc("expedientes/"+e.id).update({estado:"decidido",decisao:{sentido,texto,nome,assinatura:sig,em,hash,porId:S.me?.id||null}});
+  toast("Despacho assinado. Pode descarregar o documento final.")}
+
+/* ---------- Documento final (PDF) ---------- */
+async function imgData(src){return new Promise(r=>{const i=new Image();i.crossOrigin="anonymous";i.onload=()=>{try{const c=document.createElement("canvas");c.width=i.width;c.height=i.height;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(i,0,0);r({d:c.toDataURL("image/jpeg",.85),w:i.width,h:i.height})}catch(e){r(null)}};i.onerror=()=>r(null);i.src=src})}
+async function gerarPDF(e){
+  if(!window.jspdf)return toast("O gerador de PDF não carregou. Recarregue a página.");
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});const L=20,W=170;let y=20;
+  const ink=[22,35,42],acc=[15,95,106],red=[165,50,43],mut=[91,107,112];
+  const need=n=>{if(y+n>275){doc.addPage();y=20}};
+  const txt=(t,size=10,style="normal",col=ink,x=L,w=W)=>{doc.setFont("helvetica",style);doc.setFontSize(size);doc.setTextColor(...col);const ls=doc.splitTextToSize(String(t||""),w);ls.forEach(l=>{need(size*.45);doc.text(l,x,y);y+=size*.45})};
+  const kv=(k,v)=>{doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(...mut);need(5);doc.text(k,L,y);const yy=y;txt(v,10,"normal",ink,L+42,W-42);if(y===yy)y+=4.5;y+=1};
+  const hdr=t=>{y+=4;need(12);doc.setDrawColor(...acc);doc.setLineWidth(.4);doc.line(L,y,L+W,y);y+=6;txt(t,11,"bold",acc);y+=1};
+  txt(S.cfg.instituicao||"Instituição de Ensino Superior",13,"bold");if(S.cfg.unidade)txt(S.cfg.unidade,10,"normal",mut);
+  y+=4;txt("FOLHA DE EXPEDIENTE, PARECERES E DESPACHO",14,"bold",acc);
+  txt(`Expediente ${e.ref}  ·  Documento gerado em ${fmt(now())}`,9,"normal",mut);
+  hdr("1. Identificação do requerimento");
+  kv("Estudante",e.estudante+(e.numeroEstudante?`  (nº ${e.numeroEstudante})`:""));kv("Curso",e.curso);kv("Tipo de pedido",e.tipoPedido);kv("Assunto",e.assunto);
+  kv("Data de recepção",fmt(e.dataRecepcao,false)+`  ·  ${e.folhas||1} folha(s)`);kv("Encaminhado por",ASSIST[e.assistente]);kv("Carta original",e.scan?.nome||"—");
+  hdr("2. Pareceres dos intervenientes");
+  const ps=parsOf(e.id);
+  for(const [i,p] of ps.entries()){need(40);txt(`2.${i+1}  ${p.nome}${p.cargo?" — "+p.cargo:""}`,10.5,"bold");
+    txt(`Sentido: ${SENTIDOS[p.sentido]}   ·   Emitido em ${fmt(p.emitidoEm)}`,9,"normal",mut);y+=1;txt(p.texto,10);y+=2;
+    if(p.assinatura){need(20);const im=await imgData(p.assinatura);if(im){const hh=14,ww=Math.min(60,hh*im.w/im.h);doc.addImage(p.assinatura,"PNG",L,y,ww,hh);y+=hh+1}}
+    txt(`Assinatura electrónica · SHA-256: ${p.hash}`,7,"normal",mut);y+=4}
+  hdr("3. Decisão final");const d=e.decisao;
+  need(30);doc.setDrawColor(...red);doc.setLineWidth(.8);doc.setFont("helvetica","bold");doc.setFontSize(15);doc.setTextColor(...red);
+  const lab=DECISOES[d.sentido].toUpperCase();const tw=doc.getTextWidth(lab)+8;doc.rect(L,y-6,tw,10);doc.text(lab,L+4,y+1);y+=10;
+  txt(d.texto,10.5);y+=4;
+  if(d.assinatura){need(24);const im=await imgData(d.assinatura);if(im){const hh=18,ww=Math.min(70,hh*im.w/im.h);doc.addImage(d.assinatura,"PNG",L,y,ww,hh);y+=hh+1}}
+  doc.setDrawColor(...mut);doc.setLineWidth(.2);doc.line(L,y,L+80,y);y+=5;txt(d.nome,10,"bold");txt(`${DECISORES[e.decisor]}  ·  ${fmt(d.em)}`,9,"normal",mut);
+  txt(`Assinatura electrónica · SHA-256: ${d.hash}`,7,"normal",mut);
+  // anexo: carta digitalizada se for imagem
+  let src=null;if(e.scan&&(e.scan.tipo||"").startsWith("image/")){if(e.scan.inline){try{src=(await S.db.doc("digitalizacoes/"+e.id).get()).data()?.dataUrl}catch(x){}}else src=e.scan.url}
+  if(src){const im=await imgData(src);if(im){doc.addPage();y=20;txt("Anexo — Carta original digitalizada",11,"bold",acc);y+=2;const mw=W,mh=250;const s=Math.min(mw/im.w,mh/im.h);doc.addImage(im.d,"JPEG",L,y,im.w*s,im.h*s)}}
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(...mut);doc.setFont("helvetica","normal");doc.text(`${e.ref}  ·  Expedientes Académicos  ·  Página ${i} de ${n}`,L,290)}
+  const blob=doc.output("blob");const fn=e.ref.replace(/\//g,"-")+".pdf";
+  if(S.downloads){try{await S.downloads.save({filename:fn,data:blob});toast("Documento final descarregado.");return}catch(err){if(err?.code==="declined")return toast("Descarga cancelada.")}}
+  toast("A descarga não está disponível nesta vista. Abra a página no claude.ai.")}
+
+/* ---------- Definições ---------- */
+function cfgModal(){const c=S.cfg,e=c.emails||{},n=c.nomes||{};
+  const f=(k,l)=>`<div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="f">${l} — nome<input id="cn_${k}" value="${h(n[k]||"")}"></label><label class="f">${l} — e-mail<input id="ce_${k}" type="email" value="${h(e[k]||"")}"></label></div>`;
+  $("#layer").insertAdjacentHTML("beforeend",`<div class="modal-bg" id="mm"><form class="modal" id="fCfg"><h3>Definições</h3><p class="hint">Estes dados aparecem no documento final e são usados para as notificações automáticas.</p>
+   <label class="f">Instituição<input id="c_inst" value="${h(c.instituicao||"")}" placeholder="Ex.: Universidade … — Faculdade de Economia"></label>
+   <label class="f">Unidade / Direcção<input id="c_uni" value="${h(c.unidade||"")}" placeholder="Ex.: Direcção Pedagógica — Maputo"></label>
+   ${f("direcao","Assistente da Direcção")}${f("pedagogica","Assistente Pedagógica")}${f("director","Director")}${f("director_pedagogico","Director Pedagógico")}${f("administradora","Administradora")}
+   <div class="actions"><button class="btn" type="submit">Guardar</button><button class="btn ghost" type="button" data-act="closeModal">Cancelar</button></div></form></div>`)}
+async function saveCfg(ev){ev.preventDefault();const ks=["direcao","pedagogica","director","director_pedagogico","administradora"];
+  const d={instituicao:$("#c_inst").value.trim(),unidade:$("#c_uni").value.trim(),emails:{},nomes:{}};ks.forEach(k=>{d.emails[k]=$("#ce_"+k).value.trim();d.nomes[k]=$("#cn_"+k).value.trim()});
+  try{await S.db.doc("config/geral").set(d);$("#mm").remove();toast("Definições guardadas.")}catch(e){toast("Não foi possível guardar as definições.")}}
+
+/* ---------- Eventos ---------- */
+document.addEventListener("click",async ev=>{const t=ev.target.closest("[data-act]");if(!t)return;const a=t.dataset.act;
+  if(a==="close"&&t.classList.contains("sheet-bg")&&ev.target!==t)return;
+  const e=S.exps.find(x=>x.id===S.open);
+  try{switch(a){
+    case"tab":S.tab=t.dataset.k;lss("tab",S.tab);S.open=null;S.q="";render();break;
+    case"stage":S.stage=S.stage===t.dataset.k?"":t.dataset.k;render();break;
+    case"open":S.open=t.dataset.id;S.draftI=[];render();break;
+    case"close":S.open=null;$("#layer").innerHTML="";break;
+    case"cfg":cfgModal();break;
+    case"closeModal":$("#mm")?.remove();break;
+    case"copy":{const m=S.manual[t.dataset.i];try{await navigator.clipboard.writeText(`Para: ${m.to}\nAssunto: ${m.subject}\n\n${m.body}`);toast("Mensagem copiada.")}catch(x){const r=document.createRange();r.selectNodeContents($("#msg"+t.dataset.i));getSelection().removeAllRanges();getSelection().addRange(r);toast("Texto seleccionado. Copie com Ctrl+C.")}break}
+    case"addI":{const n=$("#i_nome").value.trim(),c=$("#i_cargo").value.trim(),m=$("#i_email").value.trim();
+      if(!n||!okEmail(m))return toast("Indique o nome e um e-mail válido do interveniente.");
+      S.draftI=[...(S.draftI||[]),{nome:n,cargo:c,email:m}];renderSheet();["i_nome","i_cargo","i_email"].forEach(k=>$("#"+k).value="");$("#i_nome").focus();break}
+    case"rmI":S.draftI.splice(+t.dataset.i,1);renderSheet();break;
+    case"encaminhar":t.disabled=true;t.textContent="A notificar…";await encaminhar(e);break;
+    case"submeter":t.disabled=true;await submeter(e);break;
+    case"clearSig":{const box=t.closest(".sec,.decision").querySelector(".sigbox");const k=box.dataset.key;const c=SIG[k].c;c.getContext("2d").clearRect(0,0,c.width,c.height);SIG[k].drawn=false;break}
+    case"emitir":t.disabled=true;await emitir(t.dataset.pid);t.disabled=false;break;
+    case"decidir":t.disabled=true;await decidir(e);t.disabled=false;break;
+    case"pdf":t.disabled=true;t.textContent="A gerar PDF…";await gerarPDF(e);t.disabled=false;t.textContent="Descarregar documento final (PDF)";break;
+  }}catch(err){console.error(err);toast(err?.message||"Ocorreu um erro. Tente de novo.");t.disabled=false}});
+document.addEventListener("change",ev=>{const t=ev.target;
+  if(t.dataset.act==="assist"){S.assist=t.value;lss("assist",t.value);render()}
+  if(t.dataset.act==="decisor"){S.decisor=t.value;lss("decisor",t.value);render()}
+  if(t.id==="d_quem"){$("#d_nome").value=S.cfg.nomes?.[t.value]||"";$("#d_email").value=S.cfg.emails?.[t.value]||""}});
+document.addEventListener("input",ev=>{if(ev.target.id==="q"){S.q=ev.target.value;const pos=ev.target.selectionStart;render();const q=$("#q");if(q){q.focus();q.setSelectionRange(pos,pos)}}});
+document.addEventListener("submit",ev=>{if(ev.target.id==="fReg")registar(ev);
+  if(ev.target.id==="fCfg")saveCfg(ev);
+  if(ev.target.id==="fMail"){ev.preventDefault();S.myEmail=$("#myEmail").value.trim().toLowerCase();lss("myEmail",S.myEmail);render()}});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"){if($("#mm"))$("#mm").remove();else if(S.open){S.open=null;$("#layer").innerHTML=""}}});
+
+/* ---------- Arranque ---------- */
+render();
+(async()=>{const use=n=>window.claude?.use?window.claude.use(n).catch(()=>null):Promise.resolve(null);
+  const [db,user,mcp,assets,downloads]=await Promise.all(["db","user","mcp","assets","downloads"].map(use));
+  Object.assign(S,{db,user,mcp,assets,downloads});
+  if(user){try{S.me=await user.me();S.canEdit=await user.canEdit();if(!S.myEmail&&S.me?.email){S.myEmail=S.me.email.toLowerCase()}}catch(e){}}
+  $("#who").innerHTML=S.me?.name?`Sessão: <b>${h(S.me.name)}</b>${S.me.email?`<br>${h(S.me.email)}`:""}`:"Sessão não identificada";
+  if(!db){S.dbFail=true;render();return}
+  const timer=setTimeout(()=>{if(!S.loaded){S.dbFail=true;render()}},10000);
+  const done=()=>{clearTimeout(timer);S.loaded=true;S.dbFail=false};
+  db.collection("expedientes").onSnapshot(s=>{done();S.exps=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{S.dbFail=true;render()});
+  db.collection("pareceres").onSnapshot(s=>{S.pars=s.docs.map(d=>({id:d.id,...d.data()}));render()});
+  db.doc("config/geral").onSnapshot(s=>{S.cfg=s.data()||{};render()});
+})();
+</script>
