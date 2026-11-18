@@ -43,7 +43,7 @@ const UNIDADES_PADRAO = [
   ['Programa', 'Mestrado em Psicologia em Saúde', 'Roda Nhavoto', 'rnhavoto@ucm.ac.mz'],
   ['Programa', 'Mestrado em Saúde Pública', 'Brigite Zongo', 'szongo@ucm.ac.mz'],
   ['Ano Propedêutico', 'Ano Propedêutico', 'Nilton Maumane', 'njmaumane@ucm.ac.mz'],
-  ['Direcção', '', 'Direcção da Faculdade de Ciências de Saúde', 'direccao.fcs@ucm.ac.mz'],
+  ['Direcção', '', 'Kajal Chhaganlal (Directora Pedagógica)', 'kchhaganlal@ucm.ac.mz'],
 ];
 const TIPOS_UNIDADE = ['Curso', 'Programa', 'Ano Propedêutico'];
 
