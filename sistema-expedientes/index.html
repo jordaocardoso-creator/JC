@@ -3,6 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
 /* Layout: barra institucional + faixa do fluxo (5 etapas) + separadores por papel; detalhe do expediente abre numa folha lateral tipo "dossier". */
 :root{
@@ -169,8 +170,9 @@ dl.kv dd{margin:0;overflow-wrap:anywhere}
 <script>
 /* ---------- Configuração do domínio ---------- */
 const APP_URL = "https://claude.ai/artifact/5Jy2MYt89Gqum8VpKTfic8";
-const CURSOS = ["Licenciatura em Gestão de Empresas","Licenciatura em Contabilidade e Auditoria","Licenciatura em Economia","Licenciatura em Direito","Licenciatura em Engenharia Informática","Licenciatura em Administração Pública","Licenciatura em Ciências da Educação","Mestrado em Gestão e Administração","Outro"];
-const TIPOS = ["Revisão de nota / prova","Exame de época especial","Equivalência de disciplinas","Transferência de curso","Mudança de turno ou regime","Anulação ou suspensão de matrícula","Reingresso","Prorrogação do pagamento de propinas","Justificação de faltas","Emissão de certificado ou declaração","Prorrogação de prazo de monografia","Outro"];
+const CURSOS = ["Administração e Gestão Hospitalar","Análises Clínicas e Laboratoriais","Farmácia","Psicologia Clínica e Assistência Social","Enfermagem","Medicina Geral","Mestrado em Gestão de Serviços de Saúde","Mestrado em Psicologia em Saúde","Mestrado em Saúde Pública"];
+const TIPOS = ["Revisão de nota / prova","Exame de época especial","Equivalência de disciplinas","Transferência de curso","Mudança de turno ou regime","Anulação ou suspensão de matrícula","Reingresso","Prorrogação do pagamento de propinas","Justificação de faltas","Emissão de certificado ou declaração","Prorrogação de prazo de monografia"];
+function tiposAll(){const extra=(S.tiposExtra||[]).filter(t=>!TIPOS.some(x=>x.toLowerCase()===t.toLowerCase()));return[...TIPOS,...extra.sort((a,b)=>a.localeCompare(b,"pt")),"Outro"]}
 const ASSIST = {direcao:"Assistente da Direcção", pedagogica:"Assistente Pedagógica"};
 const DECISORES = {director:"Director", director_pedagogico:"Director Pedagógico", administradora:"Administradora"};
 const ESTADOS = {recebido:"Recebido", em_pareceres:"Em pareceres", pronto_decisao:"Aguarda decisão", decidido:"Decidido"};
@@ -238,7 +240,7 @@ function listOf(arr,emptyT,emptyD,extra){
   a=[...a].sort((x,y)=>(y.criadoEm||"").localeCompare(x.criadoEm||""));
   const filt=S.stage?`<div class="note" style="margin-bottom:8px">Filtro do fluxo activo: <b>${h({pp:"Com pareceres pendentes",...ESTADOS}[S.stage])}</b> · <button class="btn ghost sm" data-act="stage" data-k="${S.stage}">Limpar</button></div>`:"";
   return filt+(a.length?`<div class="list">${a.map(e=>itemRow(e,extra?extra(e):"")).join("")}</div>`:`<div class="empty"><b>${emptyT}</b>${emptyD}</div>`)}
-function searchBar(){return `<div class="toolbar"><input id="q" type="search" placeholder="Procurar por nº, estudante, curso, pedido…" value="${h(S.q)}" aria-label="Procurar expedientes"></div>`}
+function searchBar(){return `<div class="toolbar"><input id="q" type="search" placeholder="Procurar por código, estudante, curso, pedido…" value="${h(S.q)}" aria-label="Procurar expedientes"></div>`}
 
 /* ---------- 1. Secretaria ---------- */
 function vSecretaria(){
@@ -247,10 +249,11 @@ function vSecretaria(){
   <section class="panel"><h2>Registar carta recebida</h2><p class="hint">Digitalize a carta, anexe o ficheiro e encaminhe para a assistente responsável.</p>
   <form id="fReg" autocomplete="off">
     <label class="f">Nome do(a) estudante<input id="r_nome" required placeholder="Ex.: Amina Sitoe"></label>
-    <div class="row"><label class="f">Nº de estudante<input id="r_num" placeholder="Ex.: 20231045"></label>
+    <div class="row"><label class="f">Código do estudante<input id="r_num" placeholder="Ex.: 2023/ENF/1045"></label>
       <label class="f">Data de recepção<input id="r_data" type="date" value="${today}" required></label></div>
     <label class="f">Curso<select id="r_curso" required><option value="">Seleccione o curso</option>${CURSOS.map(c=>`<option>${h(c)}</option>`).join("")}</select></label>
-    <label class="f">Tipo de pedido<select id="r_tipo" required><option value="">Seleccione o tipo de pedido</option>${TIPOS.map(c=>`<option>${h(c)}</option>`).join("")}</select></label>
+    <label class="f">Tipo de pedido<select id="r_tipo" required><option value="">Seleccione o tipo de pedido</option>${tiposAll().map(c=>`<option>${h(c)}</option>`).join("")}</select></label>
+    <label class="f" id="r_outro_w" hidden>Indique o tipo de pedido<input id="r_tipo_outro" placeholder="Ex.: Pedido de estágio em unidade sanitária"><span class="note" style="font-weight:400">Este tipo passa a constar da lista para os próximos registos.</span></label>
     <label class="f">Assunto / resumo da carta<textarea id="r_assunto" required placeholder="Ex.: Solicita revisão da nota do exame normal de Estatística II (2.º semestre)."></textarea></label>
     <div class="row"><label class="f">Contacto (opcional)<input id="r_contacto" placeholder="Telefone ou e-mail"></label>
       <label class="f">Nº de folhas<input id="r_folhas" type="number" min="1" value="1"></label></div>
@@ -288,18 +291,21 @@ function shrinkImage(file,max,q){return new Promise((res,rej)=>{const img=new Im
 
 async function registar(ev){ev.preventDefault();if(!S.db)return toast("Sem ligação à base de dados.");
   if(!S.scanFile)return toast("Anexe a carta digitalizada antes de submeter.");
+  let tipoSel=$("#r_tipo").value;
+  if(tipoSel==="Outro"){tipoSel=$("#r_tipo_outro").value.trim().replace(/\s+/g," ");if(tipoSel.length<3)return toast("Indique o tipo de pedido no campo «Indique o tipo de pedido».");tipoSel=tipoSel.charAt(0).toUpperCase()+tipoSel.slice(1)}
   const btn=$("#r_btn");btn.disabled=true;btn.textContent="A registar…";
   try{const id=rid();const yr=new Date().getFullYear();
     const n=S.exps.filter(e=>(e.ref||"").includes("/"+yr+"/")).length+1;
     const ref=`EXP/${yr}/${String(n).padStart(4,"0")}`;
     const scan=await storeScan(S.scanFile,id);
     const ass=document.querySelector('input[name="r_ass"]:checked').value;
-    const e={ref,estudante:$("#r_nome").value.trim(),numeroEstudante:$("#r_num").value.trim(),curso:$("#r_curso").value,tipoPedido:$("#r_tipo").value,
+    const e={ref,estudante:$("#r_nome").value.trim(),numeroEstudante:$("#r_num").value.trim(),curso:$("#r_curso").value,tipoPedido:tipoSel,
       assunto:$("#r_assunto").value.trim(),contacto:$("#r_contacto").value.trim(),folhas:Number($("#r_folhas").value||1),dataRecepcao:$("#r_data").value,
       scan,assistente:ass,estado:"recebido",criadoEm:now(),criadoPor:S.me?.name||"Secretaria",
       historico:[{em:now(),acao:`Carta registada na secretaria e submetida à ${ASSIST[ass]}`,por:S.me?.name||"Secretaria"}]};
     await S.db.doc("expedientes/"+id).set(e);
-    S.scanFile=null;$("#fReg").reset();$("#dropT").textContent="Arraste o ficheiro para aqui ou escolha do computador";$("#drop").classList.remove("has");
+    if(!tiposAll().some(t=>t.toLowerCase()===tipoSel.toLowerCase())){try{await S.db.doc("config/tipos").set({lista:[...(S.tiposExtra||[]),tipoSel]})}catch(x){console.warn(x)}}
+    S.scanFile=null;$("#fReg").reset();$("#r_outro_w").hidden=true;$("#dropT").textContent="Arraste o ficheiro para aqui ou escolha do computador";$("#drop").classList.remove("has");
     const em=S.cfg.emails?.[ass];
     if(okEmail(em)){const r=await notify(em,`Novo expediente ${ref}: ${e.tipoPedido}`,
       `Bom dia,\n\nDeu entrada na secretaria o expediente ${ref}.\n\nEstudante: ${e.estudante} (${e.curso})\nPedido: ${e.tipoPedido}\nAssunto: ${e.assunto}\n\nAceda à plataforma, separador «Assistentes», para encaminhar aos intervenientes.\n${APP_URL}\n\nCumprimentos,\nSecretaria`);
@@ -381,13 +387,14 @@ function renderSheet(){
      <button class="x" data-act="close" aria-label="Fechar">×</button></div>
    <div class="sheet-b">
     <div class="sec"><h2>Requerimento</h2><dl class="kv">
-      <dt>Estudante</dt><dd>${h(e.estudante)}${e.numeroEstudante?` · nº ${h(e.numeroEstudante)}`:""}</dd><dt>Curso</dt><dd>${h(e.curso)}</dd>
+      <dt>Estudante</dt><dd>${h(e.estudante)}</dd>${e.numeroEstudante?`<dt>Código do estudante</dt><dd class="mono">${h(e.numeroEstudante)}</dd>`:""}<dt>Curso</dt><dd>${h(e.curso)}</dd>
       <dt>Tipo de pedido</dt><dd>${h(e.tipoPedido)}</dd><dt>Assunto</dt><dd>${h(e.assunto)}</dd>
       ${e.contacto?`<dt>Contacto</dt><dd>${h(e.contacto)}</dd>`:""}<dt>Recepção</dt><dd>${fmt(e.dataRecepcao,false)} · ${e.folhas||1} folha(s)</dd>
       <dt>Submetido a</dt><dd>${h(ASSIST[e.assistente])}</dd>${e.decisor?`<dt>Decisor</dt><dd>${h(DECISORES[e.decisor])}${e.decisorNome?` — ${h(e.decisorNome)}`:""}</dd>`:""}</dl>
       ${scanHtml}</div>
     ${S.tab==="assistentes"?assistPanel(e,ps):""}
     <div class="sec"><h2>Pareceres (${ps.filter(p=>p.estado==="emitido").length}/${ps.length})</h2>
+      ${e.estado!=="decidido"&&ps.some(p=>p.estado==="emitido")?`<div class="actions" style="margin:4px 0 6px"><button class="btn ghost sm" data-act="pdf">Descarregar carta + pareceres (PDF)</button></div>`:""}
       ${ps.length?ps.map(parecerBlock).join(""):`<p class="note">Ainda não foram indicados intervenientes.</p>`}</div>
     ${myPar?parecerForm(myPar):""}
     ${S.tab==="decisao"&&e.estado==="pronto_decisao"?decisaoForm(e):""}
@@ -449,7 +456,7 @@ function decisaoBlock(e){const d=e.decisao;return `<div class="decision"><span c
   <p style="white-space:pre-wrap;margin:12px 0">${h(d.texto)}</p>
   <div class="pr" style="border:0;padding:0;margin:0"><div class="sg"><img src="${d.assinatura}" alt="Assinatura do decisor"><div><b>${h(d.nome)}</b><div class="note">${h(DECISORES[e.decisor])} · ${fmt(d.em)}</div><div class="hash">SHA-256 ${shortHash(d.hash)}</div></div></div></div>
   <div class="actions" style="margin-top:12px"><button class="btn" data-act="pdf">Descarregar documento final (PDF)</button></div>
-  <p class="note">O PDF reúne o requerimento, todos os pareceres assinados e o despacho, pronto para imprimir e arquivar no processo do estudante.</p></div>`}
+  <p class="note">Página 1: a carta do estudante. Verso (página 2): todos os pareceres assinados e o despacho. Imprima em frente e verso para ter tudo numa só folha.</p></div>`}
 
 /* ---------- Assinatura ---------- */
 const SIG={};
@@ -479,7 +486,7 @@ function showManual(list){if(!list.length)return;
 async function encaminhar(e){const list=S.draftI||[];if(!list.length)return;
   const base=parsOf(e.id).length;const por=S.me?.name||ASSIST[e.assistente];const manual=[];
   for(const [i,x] of list.entries()){const pid=e.id+"_"+(base+i+1);
-    const body=`Caro(a) ${x.nome},\n\nSolicita-se o seu parecer sobre o expediente ${e.ref}.\n\nEstudante: ${e.estudante}${e.numeroEstudante?" (nº "+e.numeroEstudante+")":""}\nCurso: ${e.curso}\nPedido: ${e.tipoPedido}\nAssunto: ${e.assunto}\n\nAceda à plataforma de Expedientes Académicos, separador «Pareceres», e entre com este e-mail (${x.email}) para ler a carta, emitir o parecer e assinar electronicamente.\n${APP_URL}\n\nCumprimentos,\n${por}\n${ASSIST[e.assistente]}`;
+    const body=`Caro(a) ${x.nome},\n\nSolicita-se o seu parecer sobre o expediente ${e.ref}.\n\nEstudante: ${e.estudante}${e.numeroEstudante?" (código "+e.numeroEstudante+")":""}\nCurso: ${e.curso}\nPedido: ${e.tipoPedido}\nAssunto: ${e.assunto}\n\nAceda à plataforma de Expedientes Académicos, separador «Pareceres», e entre com este e-mail (${x.email}) para ler a carta, emitir o parecer e assinar electronicamente.\n${APP_URL}\n\nCumprimentos,\n${por}\n${ASSIST[e.assistente]}`;
     const subject=`Pedido de parecer — ${e.ref}: ${e.tipoPedido}`;
     const r=await notify(x.email,subject,body);if(r==="manual")manual.push({to:x.email,subject,body});
     await S.db.doc("pareceres/"+pid).set({expId:e.id,ordem:base+i+1,nome:x.nome,cargo:x.cargo,email:x.email.toLowerCase(),estado:"pendente",solicitadoEm:now(),solicitadoPor:por,notificacao:r})}
@@ -511,39 +518,68 @@ async function decidir(e){const texto=$("#d_txt").value.trim(),sentido=document.
 
 /* ---------- Documento final (PDF) ---------- */
 async function imgData(src){return new Promise(r=>{const i=new Image();i.crossOrigin="anonymous";i.onload=()=>{try{const c=document.createElement("canvas");c.width=i.width;c.height=i.height;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(i,0,0);r({d:c.toDataURL("image/jpeg",.85),w:i.width,h:i.height})}catch(e){r(null)}};i.onerror=()=>r(null);i.src=src})}
+function b64ToBytes(d){const b=atob(d.split(",")[1]);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+async function scanBytes(e){
+  if(!e.scan)return null;
+  if(e.scan.inline){const x=(await S.db.doc("digitalizacoes/"+e.id).get()).data();if(!x)return null;
+    if((x.tipo||"").startsWith("image/"))return{kind:"img",src:x.dataUrl};return{kind:"pdf",bytes:b64ToBytes(x.dataUrl)}}
+  if((e.scan.tipo||"").startsWith("image/"))return{kind:"img",src:e.scan.url};
+  const r=await fetch(e.scan.url);if(!r.ok)throw new Error("scan");return{kind:"pdf",bytes:new Uint8Array(await r.arrayBuffer())}}
+
+/* Verso: pareceres e despacho, gerado com jsPDF */
+async function versoPDF(e){
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});const L=18,W=174;let y=16;
+  const ink=[22,35,42],acc=[15,95,106],red=[165,50,43],mut=[91,107,112];
+  const need=n=>{if(y+n>282){doc.addPage();y=16}};
+  const txt=(t,size=9.5,style="normal",col=ink,x=L,w=W)=>{doc.setFont("helvetica",style);doc.setFontSize(size);doc.setTextColor(...col);doc.splitTextToSize(String(t||""),w).forEach(l=>{need(size*.42);doc.text(l,x,y);y+=size*.42})};
+  txt(S.cfg.instituicao||"Instituição de Ensino Superior",10.5,"bold");
+  txt(`PARECERES E DESPACHO  ·  Expediente ${e.ref}`,12,"bold",acc);y+=1;
+  txt(`${e.estudante}${e.numeroEstudante?"  ·  Código "+e.numeroEstudante:""}  ·  ${e.curso}`,9,"normal",mut);
+  txt(`Pedido: ${e.tipoPedido}  ·  Recebido em ${fmt(e.dataRecepcao,false)}  ·  Encaminhado por ${ASSIST[e.assistente]}`,9,"normal",mut);
+  y+=2;doc.setDrawColor(...acc);doc.setLineWidth(.4);doc.line(L,y,L+W,y);y+=5;
+  const ps=parsOf(e.id).filter(p=>p.estado==="emitido");
+  for(const [i,p] of ps.entries()){need(30);
+    txt(`Parecer ${i+1} — ${p.nome}${p.cargo?", "+p.cargo:""}`,10,"bold");
+    txt(`${SENTIDOS[p.sentido]}  ·  ${fmt(p.emitidoEm)}`,8.5,"bold",p.sentido==="desfavoravel"?red:acc);y+=.5;
+    txt(p.texto,9.5);y+=1;
+    if(p.assinatura){const im=await imgData(p.assinatura);if(im){need(13);const hh=11,ww=Math.min(48,hh*im.w/im.h);doc.addImage(p.assinatura,"PNG",L,y,ww,hh);
+      doc.setFont("helvetica","normal");doc.setFontSize(6.5);doc.setTextColor(...mut);doc.text(`Assinatura electrónica · SHA-256 ${p.hash.slice(0,32)}…`,L+ww+4,y+hh-1);y+=hh+1}}
+    y+=2;doc.setDrawColor(...mut);doc.setLineWidth(.1);doc.line(L,y,L+W,y);y+=4}
+  const pend=parsOf(e.id).filter(p=>p.estado!=="emitido");
+  if(pend.length){txt(`Pareceres ainda por emitir: ${pend.map(p=>p.nome).join(", ")}`,8.5,"italic",mut);y+=3}
+  need(42);txt("DESPACHO",10.5,"bold",red);y+=2;
+  const d=e.decisao;
+  if(d){doc.setDrawColor(...red);doc.setLineWidth(.7);doc.setFont("helvetica","bold");doc.setFontSize(13);doc.setTextColor(...red);
+    const lab=DECISOES[d.sentido].toUpperCase();const tw=doc.getTextWidth(lab)+8;doc.rect(L,y-5,tw,8.5);doc.text(lab,L+4,y+1);y+=8;
+    txt(d.texto,9.5);y+=2;
+    if(d.assinatura){const im=await imgData(d.assinatura);if(im){need(18);const hh=15,ww=Math.min(60,hh*im.w/im.h);doc.addImage(d.assinatura,"PNG",L,y,ww,hh);y+=hh+1}}
+    doc.setDrawColor(...mut);doc.setLineWidth(.2);doc.line(L,y,L+75,y);y+=4;txt(d.nome,9.5,"bold");txt(`${DECISORES[e.decisor]}  ·  ${fmt(d.em)}`,8.5,"normal",mut);
+    txt(`Assinatura electrónica · SHA-256 ${d.hash}`,6.5,"normal",mut)}
+  else{txt(`A aguardar decisão${e.decisor?" do "+DECISORES[e.decisor]:""}.`,9,"italic",mut);y+=4;doc.setDrawColor(...mut);doc.setLineWidth(.15);for(let k=0;k<4;k++){need(8);doc.line(L,y,L+W,y);y+=8}}
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(...mut);doc.setFont("helvetica","normal");doc.text(`${e.ref}  ·  Verso do requerimento  ·  ${i}/${n}`,L,291)}
+  return doc.output("arraybuffer")}
+
 async function gerarPDF(e){
   if(!window.jspdf)return toast("O gerador de PDF não carregou. Recarregue a página.");
-  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});const L=20,W=170;let y=20;
-  const ink=[22,35,42],acc=[15,95,106],red=[165,50,43],mut=[91,107,112];
-  const need=n=>{if(y+n>275){doc.addPage();y=20}};
-  const txt=(t,size=10,style="normal",col=ink,x=L,w=W)=>{doc.setFont("helvetica",style);doc.setFontSize(size);doc.setTextColor(...col);const ls=doc.splitTextToSize(String(t||""),w);ls.forEach(l=>{need(size*.45);doc.text(l,x,y);y+=size*.45})};
-  const kv=(k,v)=>{doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(...mut);need(5);doc.text(k,L,y);const yy=y;txt(v,10,"normal",ink,L+42,W-42);if(y===yy)y+=4.5;y+=1};
-  const hdr=t=>{y+=4;need(12);doc.setDrawColor(...acc);doc.setLineWidth(.4);doc.line(L,y,L+W,y);y+=6;txt(t,11,"bold",acc);y+=1};
-  txt(S.cfg.instituicao||"Instituição de Ensino Superior",13,"bold");if(S.cfg.unidade)txt(S.cfg.unidade,10,"normal",mut);
-  y+=4;txt("FOLHA DE EXPEDIENTE, PARECERES E DESPACHO",14,"bold",acc);
-  txt(`Expediente ${e.ref}  ·  Documento gerado em ${fmt(now())}`,9,"normal",mut);
-  hdr("1. Identificação do requerimento");
-  kv("Estudante",e.estudante+(e.numeroEstudante?`  (nº ${e.numeroEstudante})`:""));kv("Curso",e.curso);kv("Tipo de pedido",e.tipoPedido);kv("Assunto",e.assunto);
-  kv("Data de recepção",fmt(e.dataRecepcao,false)+`  ·  ${e.folhas||1} folha(s)`);kv("Encaminhado por",ASSIST[e.assistente]);kv("Carta original",e.scan?.nome||"—");
-  hdr("2. Pareceres dos intervenientes");
-  const ps=parsOf(e.id);
-  for(const [i,p] of ps.entries()){need(40);txt(`2.${i+1}  ${p.nome}${p.cargo?" — "+p.cargo:""}`,10.5,"bold");
-    txt(`Sentido: ${SENTIDOS[p.sentido]}   ·   Emitido em ${fmt(p.emitidoEm)}`,9,"normal",mut);y+=1;txt(p.texto,10);y+=2;
-    if(p.assinatura){need(20);const im=await imgData(p.assinatura);if(im){const hh=14,ww=Math.min(60,hh*im.w/im.h);doc.addImage(p.assinatura,"PNG",L,y,ww,hh);y+=hh+1}}
-    txt(`Assinatura electrónica · SHA-256: ${p.hash}`,7,"normal",mut);y+=4}
-  hdr("3. Decisão final");const d=e.decisao;
-  need(30);doc.setDrawColor(...red);doc.setLineWidth(.8);doc.setFont("helvetica","bold");doc.setFontSize(15);doc.setTextColor(...red);
-  const lab=DECISOES[d.sentido].toUpperCase();const tw=doc.getTextWidth(lab)+8;doc.rect(L,y-6,tw,10);doc.text(lab,L+4,y+1);y+=10;
-  txt(d.texto,10.5);y+=4;
-  if(d.assinatura){need(24);const im=await imgData(d.assinatura);if(im){const hh=18,ww=Math.min(70,hh*im.w/im.h);doc.addImage(d.assinatura,"PNG",L,y,ww,hh);y+=hh+1}}
-  doc.setDrawColor(...mut);doc.setLineWidth(.2);doc.line(L,y,L+80,y);y+=5;txt(d.nome,10,"bold");txt(`${DECISORES[e.decisor]}  ·  ${fmt(d.em)}`,9,"normal",mut);
-  txt(`Assinatura electrónica · SHA-256: ${d.hash}`,7,"normal",mut);
-  // anexo: carta digitalizada se for imagem
-  let src=null;if(e.scan&&(e.scan.tipo||"").startsWith("image/")){if(e.scan.inline){try{src=(await S.db.doc("digitalizacoes/"+e.id).get()).data()?.dataUrl}catch(x){}}else src=e.scan.url}
-  if(src){const im=await imgData(src);if(im){doc.addPage();y=20;txt("Anexo — Carta original digitalizada",11,"bold",acc);y+=2;const mw=W,mh=250;const s=Math.min(mw/im.w,mh/im.h);doc.addImage(im.d,"JPEG",L,y,im.w*s,im.h*s)}}
-  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(...mut);doc.setFont("helvetica","normal");doc.text(`${e.ref}  ·  Expedientes Académicos  ·  Página ${i} de ${n}`,L,290)}
-  const blob=doc.output("blob");const fn=e.ref.replace(/\//g,"-")+".pdf";
-  if(S.downloads){try{await S.downloads.save({filename:fn,data:blob});toast("Documento final descarregado.");return}catch(err){if(err?.code==="declined")return toast("Descarga cancelada.")}}
+  const verso=await versoPDF(e);let out=verso,aviso="";
+  if(window.PDFLib){try{
+    const {PDFDocument,StandardFonts,rgb}=window.PDFLib;const pdf=await PDFDocument.create();const A4=[595.28,841.89];
+    const sc=await scanBytes(e);
+    if(sc?.kind==="pdf"){const src=await PDFDocument.load(sc.bytes,{ignoreEncryption:true});(await pdf.copyPages(src,src.getPageIndices())).forEach(pg=>pdf.addPage(pg))}
+    else if(sc?.kind==="img"){const im=await imgData(sc.src);if(!im)throw new Error("img");const jpg=await pdf.embedJpg(b64ToBytes(im.d));
+      const pg=pdf.addPage(A4);const m=28,s=Math.min((A4[0]-2*m)/im.w,(A4[1]-2*m)/im.h);const w=im.w*s,hh=im.h*s;pg.drawImage(jpg,{x:(A4[0]-w)/2,y:(A4[1]-hh)/2,width:w,height:hh})}
+    else aviso=" A carta digitalizada não foi encontrada: o PDF contém só os pareceres.";
+    if(pdf.getPageCount()){const f=await pdf.embedFont(StandardFonts.HelveticaBold);const p1=pdf.getPage(0);const {width,height}=p1.getSize();
+      const label=`${e.ref}  ·  Recebido ${fmt(e.dataRecepcao,false)}  ·  Pareceres e despacho no verso`;
+      const tw=f.widthOfTextAtSize(label,7.5);p1.drawRectangle({x:width-tw-22,y:height-20,width:tw+12,height:13,color:rgb(1,1,1),borderColor:rgb(.06,.37,.42),borderWidth:.8});
+      p1.drawText(label,{x:width-tw-16,y:height-15.5,size:7.5,font:f,color:rgb(.06,.37,.42)});
+      if(pdf.getPageCount()%2===0)aviso=" A carta tem um número par de páginas: os pareceres começam numa folha nova.";}
+    const vs=await PDFDocument.load(verso);(await pdf.copyPages(vs,vs.getPageIndices())).forEach(pg=>pdf.addPage(pg));
+    out=await pdf.save();
+  }catch(err){console.warn("pdf-lib",err);aviso=" Não foi possível juntar a carta original: o PDF contém só os pareceres."}}
+  else aviso=" Não foi possível juntar a carta original: o PDF contém só os pareceres.";
+  const blob=new Blob([out],{type:"application/pdf"});const fn=e.ref.replace(/\//g,"-")+(e.decisao?"-final":"-pareceres")+".pdf";
+  if(S.downloads){try{await S.downloads.save({filename:fn,data:blob});toast("PDF descarregado."+aviso);return}catch(err){if(err?.code==="declined")return toast("Descarga cancelada.")}}
   toast("A descarga não está disponível nesta vista. Abra a página no claude.ai.")}
 
 /* ---------- Definições ---------- */
@@ -579,11 +615,12 @@ document.addEventListener("click",async ev=>{const t=ev.target.closest("[data-ac
     case"clearSig":{const box=t.closest(".sec,.decision").querySelector(".sigbox");const k=box.dataset.key;const c=SIG[k].c;c.getContext("2d").clearRect(0,0,c.width,c.height);SIG[k].drawn=false;break}
     case"emitir":t.disabled=true;await emitir(t.dataset.pid);t.disabled=false;break;
     case"decidir":t.disabled=true;await decidir(e);t.disabled=false;break;
-    case"pdf":t.disabled=true;t.textContent="A gerar PDF…";await gerarPDF(e);t.disabled=false;t.textContent="Descarregar documento final (PDF)";break;
+    case"pdf":{const lb=t.textContent;t.disabled=true;t.textContent="A gerar PDF…";await gerarPDF(e);t.disabled=false;t.textContent=lb;break}
   }}catch(err){console.error(err);toast(err?.message||"Ocorreu um erro. Tente de novo.");t.disabled=false}});
 document.addEventListener("change",ev=>{const t=ev.target;
   if(t.dataset.act==="assist"){S.assist=t.value;lss("assist",t.value);render()}
   if(t.dataset.act==="decisor"){S.decisor=t.value;lss("decisor",t.value);render()}
+  if(t.id==="r_tipo"){$("#r_outro_w").hidden=t.value!=="Outro";if(t.value==="Outro")$("#r_tipo_outro").focus()}
   if(t.id==="d_quem"){$("#d_nome").value=S.cfg.nomes?.[t.value]||"";$("#d_email").value=S.cfg.emails?.[t.value]||""}});
 document.addEventListener("input",ev=>{if(ev.target.id==="q"){S.q=ev.target.value;const pos=ev.target.selectionStart;render();const q=$("#q");if(q){q.focus();q.setSelectionRange(pos,pos)}}});
 document.addEventListener("submit",ev=>{if(ev.target.id==="fReg")registar(ev);
@@ -604,5 +641,6 @@ render();
   db.collection("expedientes").onSnapshot(s=>{done();S.exps=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{S.dbFail=true;render()});
   db.collection("pareceres").onSnapshot(s=>{S.pars=s.docs.map(d=>({id:d.id,...d.data()}));render()});
   db.doc("config/geral").onSnapshot(s=>{S.cfg=s.data()||{};render()});
+  db.doc("config/tipos").onSnapshot(s=>{S.tiposExtra=s.data()?.lista||[];const sel=$("#r_tipo");if(sel){const v=sel.value;sel.innerHTML=`<option value="">Seleccione o tipo de pedido</option>`+tiposAll().map(c=>`<option>${h(c)}</option>`).join("");sel.value=v}});
 })();
 </script>

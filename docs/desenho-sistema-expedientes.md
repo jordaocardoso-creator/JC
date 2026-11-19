@@ -59,9 +59,9 @@ Regra principal: **o botão "Submeter à decisão final" só fica activo quando 
 
 ### 3.2 Passo a passo com um exemplo
 
-> A estudante Amina Sitoe, do 3.º ano de Contabilidade e Auditoria, entrega uma carta a pedir revisão da nota do exame de Estatística II.
+> A estudante Amina Sitoe, do 3.º ano de Enfermagem, entrega uma carta a pedir revisão da nota do exame de Farmacologia.
 
-1. **Secretaria** — digitaliza a carta (PDF ou fotografia), preenche nome, nº de estudante, curso *Licenciatura em Contabilidade e Auditoria*, tipo *Revisão de nota / prova*, resumo do assunto. Escolhe **Assistente Pedagógica** e submete. O sistema atribui o número `EXP/2026/0001`.
+1. **Secretaria** — digitaliza a carta (PDF ou fotografia), preenche nome, código do estudante, curso *Enfermagem*, tipo *Revisão de nota / prova*, resumo do assunto. Escolhe **Assistente Pedagógica** e submete. O sistema atribui o número `EXP/2026/0001`.
 2. **Assistente Pedagógica** — abre o expediente, vê a carta, e indica dois intervenientes: o Director do Curso e o docente da cadeira (nome, cargo, e-mail). Clica "Encaminhar e notificar". Cada um recebe um e-mail com o pedido e o endereço da plataforma.
 3. **Intervenientes** — entram no separador *Pareceres* com o e-mail em que foram notificados, lêem a carta, escolhem o sentido (favorável / desfavorável / favorável com condições), escrevem a fundamentação, assinam com o rato ou o dedo e confirmam a autoria.
 4. **Assistente Pedagógica** — vê os dois pareceres emitidos (2/2), escolhe o **Director Pedagógico**, confirma o e-mail e submete. O Director Pedagógico é notificado.
@@ -84,7 +84,7 @@ A faixa do topo mostra quantos expedientes estão em cada etapa e funciona como 
 ```
 expedientes/{id}
   ref               "EXP/2026/0001"
-  estudante, numeroEstudante, contacto
+  estudante, numeroEstudante (código do estudante), contacto
   curso, tipoPedido, assunto, dataRecepcao, folhas
   scan              { assetId, url, nome, tipo }  ou  { inline: true, ... }
   assistente        "direcao" | "pedagogica"
@@ -104,6 +104,9 @@ pareceres/{expId_n}
 
 digitalizacoes/{expId}   (só quando o armazenamento de ficheiros não está disponível)
   dataUrl, nome, tipo
+
+config/tipos
+  lista[]           tipos de pedido acrescentados através da opção «Outro»
 
 config/geral
   instituicao, unidade
@@ -134,24 +137,25 @@ O protótipo envia os e-mails pela conta Gmail de quem está a usar a página (�
 
 ## 8. Documento final
 
-Gerado em PDF (A4), com:
+Gerado em PDF (A4) e pensado para **impressão em frente e verso**:
 
-1. Cabeçalho da instituição e número do expediente
-2. Identificação do requerimento
-3. Todos os pareceres, com sentido, fundamentação, assinatura, data e selo
-4. Decisão final em carimbo (DEFERIDO / INDEFERIDO / DEFERIDO PARCIALMENTE), despacho, assinatura, nome e cargo do decisor
-5. Anexo com a carta original digitalizada (quando é imagem)
-6. Rodapé com número do expediente e paginação
+- **Página 1 (frente)** — a própria carta do estudante, tal como foi digitalizada, com um pequeno carimbo no canto: número do expediente, data de recepção e a indicação «Pareceres e despacho no verso».
+- **Página 2 (verso)** — identificação curta (estudante, código, curso, pedido), cada parecer com sentido, fundamentação, assinatura e selo, e no fim o despacho com o carimbo DEFERIDO / INDEFERIDO / DEFERIDO PARCIALMENTE e a assinatura do decisor.
+
+Cada parecer emitido passa logo para o verso: o PDF pode ser descarregado em qualquer momento depois do primeiro parecer. Enquanto não há decisão, o espaço do despacho sai em branco, com linhas, para despacho à mão se for preciso.
+
+Se a carta tiver mais de uma página, os pareceres vêm a seguir à última página. Com um número ímpar de páginas, ficam no verso da última; com um número par, começam numa folha nova.
 
 ## 9. Regras de negócio
 
 1. O número do expediente é sequencial por ano: `EXP/AAAA/NNNN`.
 2. Não se regista uma carta sem o ficheiro digitalizado.
-3. Um parecer emitido não pode ser editado.
-4. Só se submete à decisão quando todos os pareceres estão emitidos.
-5. Cada interveniente vê apenas os pedidos dirigidos ao seu e-mail.
-6. O despacho só pode ser assinado pelo decisor escolhido pela assistente.
-7. Todas as acções ficam no histórico, com data, hora e autor.
+3. Ao escolher «Outro» no tipo de pedido, é obrigatório escrever o tipo; esse novo tipo passa automaticamente a fazer parte da lista.
+4. Um parecer emitido não pode ser editado.
+5. Só se submete à decisão quando todos os pareceres estão emitidos.
+6. Cada interveniente vê apenas os pedidos dirigidos ao seu e-mail.
+7. O despacho só pode ser assinado pelo decisor escolhido pela assistente.
+8. Todas as acções ficam no histórico, com data, hora e autor.
 
 ## 10. Como pôr o protótipo a funcionar
 
